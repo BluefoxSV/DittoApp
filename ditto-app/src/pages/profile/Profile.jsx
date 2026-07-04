@@ -169,7 +169,7 @@ export default function Profile({
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="sm" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           {pageTitle}
         </Typography>

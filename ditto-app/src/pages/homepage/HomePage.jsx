@@ -3,7 +3,7 @@ import { Link as RouterLink } from 'react-router-dom';
 
 export default function HomePage() {
   return (
-    <Container maxWidth="md" sx={{ py: 6 }}>
+    <Container maxWidth={false} disableGutters sx={{ py: 6 }}>
       <Box sx={{ textAlign: 'center' }}>
         <Typography variant="h3" component="h1" gutterBottom>
           Bienvenido a Ditto App

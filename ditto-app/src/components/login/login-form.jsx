@@ -58,7 +58,7 @@ export default function LoginForm() {
         py: { xs: 3, md: 6 },
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth={false} disableGutters>
         <Paper
           elevation={8}
           sx={{

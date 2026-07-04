@@ -23,7 +23,7 @@ export default function VisorDeCurso() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth={false} disableGutters sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Bienvenido al Visor de Curso
         </Typography>
