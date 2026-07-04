@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import NavBar_data from "../data/NavBar";
+import NavBar_data from "./data/NavBar";
 
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
