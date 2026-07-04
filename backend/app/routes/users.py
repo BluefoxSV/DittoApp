@@ -1,37 +1,57 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.models.user import UserRole
-from app.schemas.user import UserCreate, UserProfileCreate, UserProfileRead, UserProfileUpdate, UserRead
+from app.dependencies.auth import get_user, require_roles
+from app.models.user import User, UserRole
+from app.schemas.user import UserProfileCreate, UserProfileRead, UserProfileUpdate, UserRead
 from app.services import user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("", response_model=UserRead, status_code=201)
-async def register_user(data: UserCreate):
-    return await user_service.create_user(data)
+@router.get("/me", response_model=UserRead)
+async def get_me(current_user: User = Depends(get_user)):
+    return current_user
 
 
 @router.get("", response_model=list[UserRead])
-async def list_users(role: UserRole | None = Query(default=None)):
+async def list_users(
+    role: UserRole | None = Query(default=None),
+    _: User = Depends(require_roles(UserRole.SUPPORT)),
+):
     return await user_service.list_users(role=role)
 
 
 @router.get("/{user_id}", response_model=UserRead)
-async def get_user(user_id: int):
-    return await user_service.get_user(user_id)
+async def get_user_detail(user_id: int, current_user: User = Depends(get_user)):
+    if current_user.id != user_id and current_user.role != UserRole.SUPPORT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    return await user_service.get_user_by_id(user_id)
 
 
 @router.post("/{user_id}/profile", response_model=UserProfileRead, status_code=201)
-async def create_profile(user_id: int, data: UserProfileCreate):
+async def create_profile(
+    user_id: int,
+    data: UserProfileCreate,
+    current_user: User = Depends(get_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
     return await user_service.create_user_profile(user_id, data)
 
 
 @router.get("/{user_id}/profile", response_model=UserProfileRead)
-async def get_profile(user_id: int):
+async def get_profile(user_id: int, current_user: User = Depends(get_user)):
+    if current_user.id != user_id and current_user.role != UserRole.SUPPORT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
     return await user_service.get_user_profile(user_id)
 
 
 @router.patch("/{user_id}/profile", response_model=UserProfileRead)
-async def update_profile(user_id: int, data: UserProfileUpdate):
+async def update_profile(
+    user_id: int,
+    data: UserProfileUpdate,
+    current_user: User = Depends(get_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
     return await user_service.update_user_profile(user_id, data)

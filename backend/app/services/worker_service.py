@@ -3,11 +3,11 @@ from fastapi import HTTPException, status
 from app.models.user import UserRole
 from app.models.worker import WorkerProfile
 from app.schemas.worker import WorkerProfileCreate, WorkerProfileUpdate
-from app.services.user_service import get_user
+from app.services.user_service import get_user_by_id
 
 
 async def create_worker_profile(user_id: int, data: WorkerProfileCreate) -> WorkerProfile:
-    user = await get_user(user_id)
+    user = await get_user_by_id(user_id)
     if user.role != UserRole.WORKER:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

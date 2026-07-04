@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     app_name: str = "DittoApp API"
     debug: bool = False
     database_url: str = "postgres://postgres:postgres@localhost:5432/dittoapp"
+    jwt_secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24
 
 
 settings = Settings()
