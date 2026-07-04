@@ -37,14 +37,8 @@ export function ProfileExample({ role = ROLES.USER }) {
 export default function ProfileExamples() {
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
-        Ejemplo de perfil de usuario
-      </Typography>
       <ProfileExample role={ROLES.USER} />
       <Divider sx={{ my: 4 }} />
-      <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 2 }}>
-        Ejemplo de perfil de trabajador
-      </Typography>
       <ProfileExample role={ROLES.WORKER} />
     </Box>
   )
