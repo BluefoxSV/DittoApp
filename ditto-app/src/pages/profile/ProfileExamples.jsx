@@ -25,7 +25,7 @@ function getInitialDataByRole(role) {
   return role === ROLES.WORKER ? WORKER_SAMPLE_DATA : USER_SAMPLE_DATA
 }
 
-export default function App({ role = ROLES.USER }) {
+export default function ProfileExample({ role = ROLES.USER }) {
   return (
     <Profile
       role={role}
@@ -40,12 +40,12 @@ export function ProfileExamples() {
       <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
         Ejemplo de perfil de usuario
       </Typography>
-      <App role={ROLES.USER} />
+      <ProfileExample role={ROLES.USER} />
       <Divider sx={{ my: 4 }} />
       <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 2 }}>
         Ejemplo de perfil de trabajador
       </Typography>
-      <App role={ROLES.WORKER} />
+      <ProfileExample role={ROLES.WORKER} />
     </Box>
   )
 }

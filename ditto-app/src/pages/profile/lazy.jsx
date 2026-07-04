@@ -4,7 +4,7 @@ import { lazy } from 'react';
 const ProfilePage = lazy(() => import('./Profile.jsx'));
 const ProfileExamplesPage = lazy(() => import('./ProfileExamples.jsx'));
 
-const homepageLazy = {
+const profileLazy = {
   routes: [
     {
       path: '/profile',
@@ -17,4 +17,4 @@ const homepageLazy = {
   ],
 };
 
-export default homepageLazy;
+export default profileLazy;
