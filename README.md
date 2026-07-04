@@ -28,10 +28,26 @@ SuperDittoApp/Jobcrafter/Micraft es una plataforma para impulsar el empleo infor
 - Visor de curso. El trabajador puede ver las diapositivas, videos y lecciones necesarias para completar el curso y agregarlo a su perfil.
 
 ## Limitaciones de proyecto.
-DB = postgress
-BE = FASTAPI
-FE = REACT JS
+- DB = postgress
+- BE = FASTAPI
+- FE = REACT JS
 
-BotWA = GoWA (Unir flujo con n8n) (Agentes de seguimiento)\
+- BotWA = GoWA (Unir flujo con n8n) (Agentes de seguimiento)\
 
-Interfaz grafica debe de estar en MATERIAL UI
+- Interfaz grafica debe de estar en MATERIAL UI
+
+- Combinar con TAILWIND
+
+## Estructura del proyecto.
+
+-> DittoApp
+    |->public
+    |----|-> assets (todas las imagenes iconografia etc que sera renderizado en FE)
+    |----|-> components (Todos los componentes de la plataforma desde Dashboard y sus estructuras, data, login, singup, etc)
+    |----|-> pages (Paginas donde se renerizaran los componentes)
+    |----|-> services (Toda respuesta manejada de JS en las paginas de enderizado)
+    |----|-> Styles (CSS de proyecto general)
+    App.jsx (Enrutador principal del proyecto, paginas mostrables)
+    index.css (Invvocador de TailwindCSS, para proyecto genereal)
+    main.jsx (CREADOR ROOT)
+    
