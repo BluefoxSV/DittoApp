@@ -7,6 +7,7 @@
  * se edita 1 línea (BASE_COLORS) y toda la app se actualiza.
  */
 
+
 const BASE_COLORS = {
     primary: "#BB6AF0", // morado de marca
     paper:   "#FCFCF5", // blanco (nombrado "paper", no "base": Tailwind ya usa "text-base" para font-size y choca)
@@ -37,6 +38,8 @@ const BASE_COLORS = {
       b + (target[2] - b) * amt,
     ]);
   }
+
+  corePlugins: { preflight: false };
   
   // Genera una escala 50–950 (11 pasos) a partir de un solo hex.
   // step 500 = color exacto que diste; <500 más claro, >500 más oscuro.
@@ -52,6 +55,7 @@ const BASE_COLORS = {
     }
     return scale;
   }
+  
   
   const colors = {
     primary: generateScale(BASE_COLORS.primary),
@@ -70,3 +74,4 @@ const BASE_COLORS = {
   };
   
   module.exports._debugColors = colors; // solo para inspección manual si se necesita
+  

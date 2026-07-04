@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { key: "profile", icon: "profile", label: "Perfil" },
 ];
 
-// mock — reemplazar por datos reales de /api/workers/:id
 const worker = {
   name: "Carlos Méndez",
   trade: "Electricista",
@@ -28,75 +27,86 @@ const worker = {
 };
 
 const statusColor = {
-  Pendiente: "text-primary-600",
-  "En curso": "text-gray-500",
-  Completado: "text-gray-400",
+  Pendiente: "text-primary-700 bg-primary-50",
+  "En curso": "text-gray-700 bg-gray-100",
+  Completado: "text-gray-500 bg-gray-100",
 };
+
+const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
+const avatarSx = { bgcolor: "#BB6AF0", color: "#fff", width: 40, height: 40, fontSize: 14, fontWeight: 700 };
 
 export default function WorkerDashboard() {
   const [active, setActive] = useState("dashboard");
 
   return (
-    <Box className="flex flex-col md:flex-row min-h-screen bg-paper">
+    <Box sx={FONT} className="flex flex-col md:flex-row min-h-screen bg-paper text-left">
       <SidebarNav items={NAV_ITEMS} activeKey={active} onSelect={setActive} />
 
-      {/* pb-20 en móvil deja espacio a la barra inferior fija */}
-      <Box className="flex-1 p-4 md:p-6 min-w-0 pb-20 md:pb-6">
-        <Box className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+      <Box className="flex-1 p-4 md:p-8 min-w-0 pb-24 md:pb-8 w-full max-w-5xl">
+        <Box className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <Box>
-            <Typography className="text-sm text-gray-500">Hola,</Typography>
-            <Typography className="text-lg font-medium">
+            <Typography sx={FONT} className="text-sm text-gray-600">Hola,</Typography>
+            <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
               {worker.name} — {worker.trade}
             </Typography>
           </Box>
-          <Box className="flex items-center gap-2">
+          <Box className="flex items-center gap-3">
             <Chip
               label={worker.experienceLabel}
               title="Basado en años de experiencia y certificaciones, no en idiomas"
-              className="bg-primary-50 text-primary-700 text-xs"
+              sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
             />
-            <Avatar className="bg-primary-500 w-8 h-8 text-xs">CM</Avatar>
+            <Avatar sx={avatarSx}>CM</Avatar>
           </Box>
         </Box>
 
-        {/* 1 col en móvil, 3 en sm+ */}
-        <Box className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+        <Box className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <MetricCard label="Cursos completados" value={worker.metrics.completedCourses} tone="primary" />
           <MetricCard label="Solicitudes activas" value={worker.metrics.activeRequests} tone="gray" />
           <MetricCard label="Calificación" value={worker.metrics.rating} tone="primary" />
         </Box>
 
-        <Typography className="text-sm font-medium mb-2">Solicitudes recientes</Typography>
-        <Box className="border border-gray-200 rounded-lg overflow-hidden mb-5">
+        <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+          Solicitudes recientes
+        </Typography>
+        <Box className="border border-gray-200 rounded-2xl overflow-hidden mb-8">
           {worker.requests.map((r, i) => (
             <Box
               key={i}
-              className={`flex flex-col sm:flex-row sm:justify-between gap-1 px-4 py-2.5 text-sm ${
+              className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 px-5 py-4 ${
                 i < worker.requests.length - 1 ? "border-b border-gray-200" : ""
               }`}
             >
-              <span className="min-w-0 truncate">{r.client} — {r.service}</span>
-              <span className={`${statusColor[r.status]} flex-shrink-0`}>{r.status}</span>
+              <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
+                {r.client} — {r.service}
+              </Typography>
+              <span
+                className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 self-start sm:self-center ${statusColor[r.status]}`}
+              >
+                {r.status}
+              </span>
             </Box>
           ))}
         </Box>
 
-        <Typography className="text-sm font-medium mb-2">Progreso de aprendizaje</Typography>
-        <Box className="flex flex-col gap-3">
+        <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+          Progreso de aprendizaje
+        </Typography>
+        <Box className="flex flex-col gap-5">
           {worker.courseProgress.map((c, i) => (
             <Box key={i}>
-              <Box className="flex justify-between text-xs text-gray-500 mb-1">
+              <Box className="flex justify-between text-sm font-medium text-gray-700 mb-2">
                 <span className="min-w-0 truncate pr-2">{c.title}</span>
-                <span className="flex-shrink-0">{c.percent}%</span>
+                <span className="flex-shrink-0 text-primary-700 font-bold">{c.percent}%</span>
               </Box>
               <LinearProgress
                 variant="determinate"
                 value={c.percent}
                 sx={{
-                  height: 6,
-                  borderRadius: 4,
-                  backgroundColor: "#F4E8FD",
-                  "& .MuiLinearProgress-bar": { backgroundColor: "#BB6AF0" },
+                  height: 8,
+                  borderRadius: 6,
+                  backgroundColor: "#f4e7fd",
+                  "& .MuiLinearProgress-bar": { backgroundColor: "#BB6AF0", borderRadius: 6 },
                 }}
               />
             </Box>

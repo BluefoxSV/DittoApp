@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { key: "profile", icon: "profile", label: "Perfil" },
 ];
 
-// mock — reemplazar por respuesta real del endpoint de matching por IA
 const suggestions = [
   { initials: "RM", name: "Rodrigo Martínez", trade: "Fontanería", rating: 4.9, highlight: true },
   { initials: "LP", name: "Luis Pérez", trade: "Plomería general", rating: 4.7, highlight: false },
@@ -23,64 +22,71 @@ const activeService = {
   status: "En progreso",
 };
 
+const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
+const avatarSx = { bgcolor: "#BB6AF0", color: "#fff", width: 40, height: 40, fontSize: 14, fontWeight: 700 };
+
 export default function UserDashboard() {
   const [active, setActive] = useState("chatAI");
 
   return (
-    <Box className="flex flex-col md:flex-row min-h-screen bg-paper">
+    <Box sx={FONT} className="flex flex-col md:flex-row min-h-screen bg-paper text-left">
       <SidebarNav items={NAV_ITEMS} activeKey={active} onSelect={setActive} />
 
-      <Box className="flex-1 p-4 md:p-6 min-w-0 pb-20 md:pb-6">
-        <Typography className="text-lg font-medium mb-4">
+      <Box className="flex-1 p-4 md:p-8 min-w-0 pb-24 md:pb-8 w-full max-w-5xl">
+        <Typography sx={FONT} className="text-2xl font-bold text-gray-900 mb-6">
           Hola, Sofía — ¿qué necesitas resolver hoy?
         </Typography>
 
-        <Box className="bg-primary-500 rounded-xl p-4 mb-5">
-          <Typography className="text-paper text-sm opacity-90 mb-2">
+        <Box className="bg-primary-500 rounded-2xl p-5 mb-8">
+          <Typography sx={FONT} className="text-white text-sm font-medium mb-3">
             Escribe tu necesidad y la IA sugiere trabajadores verificados
           </Typography>
-          <Box className="bg-paper rounded-lg px-3 py-2 flex items-center gap-2">
-            <i className="ti ti-search text-gray-400 flex-shrink-0" aria-hidden="true" />
-            <Typography className="text-sm text-gray-400 truncate">
+          <Box className="bg-paper rounded-xl px-4 py-3 flex items-center gap-2">
+            <i className="ti ti-search text-primary-400 flex-shrink-0 text-lg" aria-hidden="true" />
+            <Typography sx={FONT} className="text-sm text-gray-600 truncate">
               Necesito a alguien que revise una fuga de agua...
             </Typography>
           </Box>
         </Box>
 
-        <Typography className="text-sm font-medium mb-2">Sugerencias de la IA</Typography>
-        {/* 1 col móvil → 2 col sm → 3 col lg */}
-        <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
+        <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+          Sugerencias de la IA
+        </Typography>
+        <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           {suggestions.map((s, i) => (
             <Box
               key={i}
-              className={`rounded-lg p-3 min-w-0 ${s.highlight ? "bg-primary-50" : "bg-gray-100"}`}
+              className={`rounded-2xl p-5 min-w-0 border transition-shadow hover:shadow-md ${
+                s.highlight ? "bg-primary-50 border-primary-200" : "bg-gray-100 border-gray-200"
+              }`}
             >
-              <Avatar className="bg-primary-500 w-8 h-8 text-xs mb-2">{s.initials}</Avatar>
-              <Typography
-                className={`text-sm font-medium truncate ${
-                  s.highlight ? "text-primary-700" : "text-gray-500"
-                }`}
-              >
+              <Avatar sx={avatarSx} className="mb-3">{s.initials}</Avatar>
+              <Typography sx={FONT} className="text-base font-bold text-gray-900 truncate">
                 {s.name}
               </Typography>
-              <Typography className={`text-xs ${s.highlight ? "text-primary-700" : "text-gray-500"}`}>
-                {s.trade} · {s.rating}
+              <Typography sx={FONT} className="text-sm font-semibold text-primary-700 mt-1">
+                {s.trade} · ★ {s.rating}
               </Typography>
             </Box>
           ))}
         </Box>
 
-        <Typography className="text-sm font-medium mb-2">Servicio activo</Typography>
-        <Box className="bg-gray-100 rounded-lg p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+        <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+          Servicio activo
+        </Typography>
+        <Box className="bg-paper border border-gray-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <Box className="min-w-0">
-            <Typography className="text-sm font-medium text-gray-600 truncate">
+            <Typography sx={FONT} className="text-base font-bold text-gray-900 truncate">
               {activeService.worker} — {activeService.task}
             </Typography>
-            <Typography className="text-xs text-gray-500 mt-1">{activeService.startedAt}</Typography>
+            <Typography sx={FONT} className="text-sm text-gray-600 mt-1">
+              {activeService.startedAt}
+            </Typography>
           </Box>
           <Chip
             label={activeService.status}
-            className="bg-primary-50 text-primary-700 text-xs self-start sm:self-center"
+            sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
+            className="self-start sm:self-center"
           />
         </Box>
       </Box>
