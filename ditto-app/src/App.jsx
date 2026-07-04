@@ -1,9 +1,7 @@
-import { Suspense, lazy } from 'react';
+import { Suspense } from 'react';
 import { BrowserRouter, Link as RouterLink, Route, Routes } from 'react-router-dom';
 import { AppBar, Box, Button, CircularProgress, Container, Toolbar, Typography } from '@mui/material';
-
-const HomePage = lazy(() => import('./pages/HomePage.jsx'));
-const CoursePage = lazy(() => import('./pages/CoursePage.jsx'));
+import lazyMain from './lazyMain';
 
 function LoadingFallback() {
   return (
@@ -33,9 +31,9 @@ function AppRoutes() {
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/curso" element={<CoursePage />} />
-            <Route path="*" element={<HomePage />} />
+            {lazyMain.routes.map((route) => (
+              <Route key={route.path} path={route.path} element={route.element} />
+            ))}
           </Routes>
         </Suspense>
       </Container>

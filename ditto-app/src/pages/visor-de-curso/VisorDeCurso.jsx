@@ -1,16 +1,15 @@
-import React from 'react';
 import {
-  Container,
-  Paper,
-  Typography,
+  AppBar,
+  Box,
   Button,
   Card,
-  CardContent,
   CardActions,
+  CardContent,
+  Container,
   Grid,
-  Box,
-  AppBar,
+  Paper,
   Toolbar,
+  Typography,
 } from '@mui/material';
 
 export default function VisorDeCurso() {
@@ -23,12 +22,12 @@ export default function VisorDeCurso() {
           </Typography>
         </Toolbar>
       </AppBar>
-      
+
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Bienvenido al Visor de Curso
         </Typography>
-        
+
         <Grid container spacing={3} sx={{ mt: 2 }}>
           {[1, 2, 3, 4, 5, 6].map((item) => (
             <Grid item xs={12} sm={6} md={4} key={item}>
