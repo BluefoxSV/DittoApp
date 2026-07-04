@@ -33,13 +33,9 @@ function AppRoutes() {
           </Routes>
         </Suspense>
       </Box>
-<<<<<<< HEAD
-    </Box>
-=======
 
       <Footer />
-    </>
->>>>>>> d7936f7 (Modificaicon de invoacion de Layouts :V)
+    </Box>
   );
 }
 
