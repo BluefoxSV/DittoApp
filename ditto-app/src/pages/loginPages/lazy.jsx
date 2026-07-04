@@ -6,11 +6,9 @@ const LoginPage = lazy(() => import('./loginPages'));
 const LoginPageLazy = {
   routes: [
     {
-      path: '/Login',
+      path: '/login',
       element: <LoginPage />,
     },
-
-    {path: '/Login', element: ""},
   ],
 };
 
