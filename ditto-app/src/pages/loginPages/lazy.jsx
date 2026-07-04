@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { lazy } from 'react';
 
-const LoginPage = lazy(() => import('../loginPages'));
+const LoginPage = lazy(() => import('./loginPages'));
 
 const LoginPageLazy = {
   routes: [
