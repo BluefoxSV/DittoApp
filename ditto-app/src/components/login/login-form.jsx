@@ -51,7 +51,7 @@ export default function LoginForm() {
       sx={{
         minHeight: "100vh",
         width: "100%",
-        bgcolor: "#f4f7fb",
+        // bgcolor: "#f4f7fb",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
