@@ -26,3 +26,12 @@ SuperDittoApp/Jobcrafter/Micraft es una plataforma para impulsar el empleo infor
 - Perfil de trabajdor. El trabajador puede agregar experiencia, historial académico e información personal y de contacto para hacer más fácil de encontrar su perfil para los usuarios.
 - Lista de cursos. El trabajador puede elegir un curso, enlistarse en él y ver el resumen y contenido del curso.
 - Visor de curso. El trabajador puede ver las diapositivas, videos y lecciones necesarias para completar el curso y agregarlo a su perfil.
+
+## Limitaciones de proyecto.
+DB = postgress
+BE = FASTAPI
+FE = REACT JS
+
+BotWA = GoWA (Unir flujo con n8n) (Agentes de seguimiento)\
+
+Interfaz grafica debe de estar en MATERIAL UI
