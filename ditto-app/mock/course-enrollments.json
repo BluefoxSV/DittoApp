@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "worker_id": 1,
+    "course_id": 1,
+    "status": "completed",
+    "progress": 100,
+    "enrolled_at": "2025-10-12T08:00:00Z"
+  },
+  {
+    "id": 2,
+    "worker_id": 1,
+    "course_id": 3,
+    "status": "in_progress",
+    "progress": 50,
+    "enrolled_at": "2025-11-01T10:00:00Z"
+  },
+  {
+    "id": 3,
+    "worker_id": 2,
+    "course_id": 2,
+    "status": "completed",
+    "progress": 100,
+    "enrolled_at": "2025-09-25T09:00:00Z"
+  },
+  {
+    "id": 4,
+    "worker_id": 2,
+    "course_id": 3,
+    "status": "enrolled",
+    "progress": 0,
+    "enrolled_at": "2026-02-15T14:00:00Z"
+  }
+]

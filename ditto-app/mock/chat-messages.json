@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "sender_id": 1,
+    "receiver_id": 2,
+    "content": "Hola María, vi tu perfil. ¿Podrías revisar mi tablero eléctrico esta semana?",
+    "is_read": true,
+    "created_at": "2026-03-01T10:50:00Z"
+  },
+  {
+    "id": 2,
+    "sender_id": 2,
+    "receiver_id": 1,
+    "content": "Hola Carlos, claro. ¿Puedes enviarme fotos del tablero y decirme cuántos breakers saltan?",
+    "is_read": true,
+    "created_at": "2026-03-01T10:55:00Z"
+  },
+  {
+    "id": 3,
+    "sender_id": 1,
+    "receiver_id": 2,
+    "content": "Saltan 2 breakers cuando enciendo la estufa y el microondas al mismo tiempo.",
+    "is_read": true,
+    "created_at": "2026-03-01T11:02:00Z"
+  },
+  {
+    "id": 4,
+    "sender_id": 2,
+    "receiver_id": 1,
+    "content": "Perfecto. Puedo ir el jueves a las 10:00. El diagnóstico inicial no tiene costo.",
+    "is_read": false,
+    "created_at": "2026-03-01T11:10:00Z"
+  },
+  {
+    "id": 5,
+    "sender_id": 4,
+    "receiver_id": 3,
+    "content": "Buen día Jorge, tengo una fuga en el baño. ¿Tienes disponibilidad para mañana?",
+    "is_read": true,
+    "created_at": "2026-03-10T09:15:00Z"
+  },
+  {
+    "id": 6,
+    "sender_id": 3,
+    "receiver_id": 4,
+    "content": "Hola Ana, sí tengo espacio mañana entre 14:00 y 17:00. ¿Te funciona?",
+    "is_read": false,
+    "created_at": "2026-03-10T09:22:00Z"
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "id": 1,
+    "user_id": 2,
+    "bio": "Electricista con enfoque en instalaciones residenciales seguras y eficientes.",
+    "experience": "4 años instalando sistemas eléctricos domésticos, tableros y contactos. Experiencia en reparación de cortocircuitos y actualización de instalaciones antiguas.",
+    "academic_history": "Técnico en electromecánica — CONALEP Guadalajara",
+    "contact_info": "WhatsApp: +52 33 8765 4321 | Horario: Lun–Sáb 8:00–18:00",
+    "is_verified": true,
+    "classification_level": 3,
+    "created_at": "2025-10-05T09:30:00Z"
+  },
+  {
+    "id": 2,
+    "user_id": 3,
+    "bio": "Plomero especializado en fugas, instalación de tinacos y mantenimiento preventivo.",
+    "experience": "6 años atendiendo viviendas y pequeños comercios en la zona metropolitana. Certificado en detección de fugas sin demolición.",
+    "academic_history": "Curso técnico en fontanería — Escuela de Oficios CDMX",
+    "contact_info": "WhatsApp: +52 55 1122 3344 | Disponible fines de semana",
+    "is_verified": true,
+    "classification_level": 4,
+    "created_at": "2025-09-20T12:00:00Z"
+  }
+]

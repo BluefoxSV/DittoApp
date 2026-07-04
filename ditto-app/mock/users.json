@@ -1,0 +1,37 @@
+[
+  {
+    "id": 1,
+    "email": "carlos.mendoza@email.com",
+    "role": "user",
+    "is_active": true,
+    "created_at": "2025-11-10T14:30:00Z"
+  },
+  {
+    "id": 2,
+    "email": "maria.lopez@email.com",
+    "role": "worker",
+    "is_active": true,
+    "created_at": "2025-10-05T09:15:00Z"
+  },
+  {
+    "id": 3,
+    "email": "jorge.ruiz@email.com",
+    "role": "worker",
+    "is_active": true,
+    "created_at": "2025-09-20T11:45:00Z"
+  },
+  {
+    "id": 4,
+    "email": "ana.torres@email.com",
+    "role": "user",
+    "is_active": true,
+    "created_at": "2026-01-08T16:20:00Z"
+  },
+  {
+    "id": 5,
+    "email": "soporte@dittoapp.com",
+    "role": "support",
+    "is_active": true,
+    "created_at": "2025-08-01T08:00:00Z"
+  }
+]

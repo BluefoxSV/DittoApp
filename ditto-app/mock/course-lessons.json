@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "course_id": 1,
+    "title": "Introducción a la seguridad eléctrica",
+    "content_type": "video",
+    "content_url": "https://example.com/courses/1/lesson-1.mp4",
+    "order": 1
+  },
+  {
+    "id": 2,
+    "course_id": 1,
+    "title": "EPP y herramientas básicas",
+    "content_type": "slide",
+    "content_url": "https://example.com/courses/1/lesson-2.pdf",
+    "order": 2
+  },
+  {
+    "id": 3,
+    "course_id": 1,
+    "title": "Instalación segura de contactos",
+    "content_type": "video",
+    "content_url": "https://example.com/courses/1/lesson-3.mp4",
+    "order": 3
+  },
+  {
+    "id": 4,
+    "course_id": 2,
+    "title": "Tipos de tubería y conexiones",
+    "content_type": "slide",
+    "content_url": "https://example.com/courses/2/lesson-1.pdf",
+    "order": 1
+  },
+  {
+    "id": 5,
+    "course_id": 2,
+    "title": "Detección y reparación de fugas",
+    "content_type": "video",
+    "content_url": "https://example.com/courses/2/lesson-2.mp4",
+    "order": 2
+  },
+  {
+    "id": 6,
+    "course_id": 3,
+    "title": "Presupuesto personal mensual",
+    "content_type": "video",
+    "content_url": "https://example.com/courses/3/lesson-1.mp4",
+    "order": 1
+  },
+  {
+    "id": 7,
+    "course_id": 3,
+    "title": "Cómo cotizar un servicio",
+    "content_type": "slide",
+    "content_url": "https://example.com/courses/3/lesson-2.pdf",
+    "order": 2
+  },
+  {
+    "id": 8,
+    "course_id": 4,
+    "title": "Herramientas esenciales de carpintería",
+    "content_type": "slide",
+    "content_url": "https://example.com/courses/4/lesson-1.pdf",
+    "order": 1
+  }
+]

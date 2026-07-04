@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "full_name": "Carlos Mendoza",
+    "phone": "+52 33 1234 5678",
+    "address": "Calle Insurgentes 118, Guadalajara, Jalisco",
+    "created_at": "2025-11-10T14:35:00Z"
+  },
+  {
+    "id": 2,
+    "user_id": 4,
+    "full_name": "Ana Torres",
+    "phone": "+52 55 9876 5432",
+    "address": "Av. Universidad 502, Coyoacán, Ciudad de México",
+    "created_at": "2026-01-08T16:25:00Z"
+  }
+]
