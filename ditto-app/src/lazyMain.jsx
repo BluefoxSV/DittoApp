@@ -4,6 +4,7 @@ import LoginPages from './pages/loginPages/loginPages.jsx';
 import LoginPageLazy from './pages/loginPages/lazy.jsx';
 import userDashboardLazy from './pages/dashboards/lazy.jsx';
 import workerDashboardLazy from './pages/dashboards/lazy.jsx';
+import LazyCurso from './pages/lista-curso/LazyCurso.jsx';
 
 
 import profileLazy from './pages/profile/lazy.jsx';
@@ -21,6 +22,7 @@ const lazyMain = {
     ...profileLazy.routes,
     ...userDashboardLazy.routes,
     ...workerDashboardLazy.routes,
+    ...LazyCurso.routes,
   ],
 };
 
