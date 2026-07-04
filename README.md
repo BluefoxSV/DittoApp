@@ -40,14 +40,35 @@ SuperDittoApp/Jobcrafter/Micraft es una plataforma para impulsar el empleo infor
 
 ## Estructura del proyecto.
 
--> DittoApp
-    |->public
-    |----|-> assets (todas las imagenes iconografia etc que sera renderizado en FE)
-    |----|-> components (Todos los componentes de la plataforma desde Dashboard y sus estructuras, data, login, singup, etc)
-    |----|-> pages (Paginas donde se renerizaran los componentes)
-    |----|-> services (Toda respuesta manejada de JS en las paginas de enderizado)
-    |----|-> Styles (CSS de proyecto general)
-    App.jsx (Enrutador principal del proyecto, paginas mostrables)
-    index.css (Invvocador de TailwindCSS, para proyecto genereal)
-    main.jsx (CREADOR ROOT)
-    
+DittoApp/
+├── public/
+│
+├── src/
+│   ├── assets/
+│   │   └── Imágenes, iconografía y archivos visuales que serán renderizados en el Frontend.
+│   │
+│   ├── components/
+│   │   └── Componentes reutilizables de la plataforma:
+│   │       ├── Dashboard/
+│   │       ├── Login/
+│   │       ├── Signup/
+│   │       ├── Data/
+│   │       └── Otros componentes generales.
+│   │
+│   ├── pages/
+│   │   └── Páginas principales donde se renderizan los componentes.
+│   │
+│   ├── services/
+│   │   └── Lógica JavaScript para manejar respuestas, peticiones y procesos usados por las páginas.
+│   │
+│   ├── styles/
+│   │   └── Archivos CSS generales del proyecto.
+│   │
+│   ├── App.jsx
+│   │   └── Enrutador principal del proyecto. Define las páginas mostrables.
+│   │
+│   ├── index.css
+│   │   └── Archivo que invoca TailwindCSS y estilos globales del proyecto.
+│   │
+│   └── main.jsx
+│       └── Archivo principal que crea el root de React.OR ROOT)
