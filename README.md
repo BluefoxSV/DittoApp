@@ -16,4 +16,4 @@ SuperDittoApp/Jobcrafter/Micraft es una plataforma para impulsar el empleo infor
 - Se va a dar seguimiento por Whatsapp al trabajador sobre los cursos que ha tomado, tiene pendientes o se ha enlistado.
 - El seguimiento del usuario va a ser del servicio que está recibiendo de un trabajdor, cuanto se termine el servicio, envío de formulario de satisfacción, etc.
 
-
+## Diseño de la plataforma
