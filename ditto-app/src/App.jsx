@@ -14,7 +14,7 @@ function LoadingFallback() {
 function AppRoutes() {
   return (
     <>
-      <AppBar position="static">
+      <AppBar position="static" sx={{ backgroundColor: "#BB6AF0" }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Ditto App
@@ -28,7 +28,7 @@ function AppRoutes() {
         </Toolbar>
       </AppBar>
 
-      <Box sx={{ py: 4 }}>
+      <Box>
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             {lazyMain.routes.map((route) => (

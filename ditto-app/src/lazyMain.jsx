@@ -2,8 +2,8 @@ import homepageLazy from './pages/homepage/lazy.jsx';
 import visorDeCursoLazy from './pages/visor-de-curso/lazy.jsx';
 import LoginPages from './pages/loginPages/loginPages.jsx';
 import LoginPageLazy from './pages/loginPages/lazy.jsx';
-import userDashboardLazy from './pages/dashboards/lazy.jsx';
-import workerDashboardLazy from './pages/dashboards/lazy.jsx';
+import dashusuLazy from './pages/dashboards/lazy.jsx';
+import dashtrabajaLazy from './pages/dashboards/lazy.jsx';
 import LazyCurso from './pages/lista-curso/LazyCurso.jsx';
 
 
@@ -20,8 +20,8 @@ const lazyMain = {
     ...visorDeCursoLazy.routes,
     ...LoginPageLazy.routes,
     ...profileLazy.routes,
-    ...userDashboardLazy.routes,
-    ...workerDashboardLazy.routes,
+    ...dashusuLazy.routes,
+    ...dashtrabajaLazy.routes,
     ...LazyCurso.routes,
   ],
 };
