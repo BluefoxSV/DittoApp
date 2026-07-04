@@ -5,6 +5,7 @@ import lazyMain from './lazyMain';
 
 import Navbar from './components/layout/navBar';
 
+import Footer from './components/layout/footer';
 
 function LoadingFallback() {
   return (
@@ -32,7 +33,13 @@ function AppRoutes() {
           </Routes>
         </Suspense>
       </Box>
+<<<<<<< HEAD
     </Box>
+=======
+
+      <Footer />
+    </>
+>>>>>>> d7936f7 (Modificaicon de invoacion de Layouts :V)
   );
 }
 

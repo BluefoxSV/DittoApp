@@ -7,7 +7,7 @@ export default function LoginPages(){
         <>
         {/* <Navbar /> */}
         <LoginForm />
-        <Footer />
+        {/* <Footer /> */}
         </>
     )
 }
