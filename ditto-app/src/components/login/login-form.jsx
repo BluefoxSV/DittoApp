@@ -34,9 +34,6 @@ export default function LoginForm() {
         return;
       }
 
-      console.log("Correo:", email);
-      console.log("Contraseña:", password);
-
       setSuccess("Login procesado correctamente.");
     } catch (err) {
       setError("Ocurrió un error al iniciar sesión.");
@@ -46,6 +43,7 @@ export default function LoginForm() {
   };
 
   return (
+
     <Box
       component="section"
       sx={{
