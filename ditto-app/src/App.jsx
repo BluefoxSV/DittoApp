@@ -3,6 +3,9 @@ import { BrowserRouter, Link as RouterLink, Route, Routes } from 'react-router-d
 import { AppBar, Box, Button, CircularProgress, Toolbar, Typography } from '@mui/material';
 import lazyMain from './lazyMain';
 
+import Navbar from './components/layout/navBar';
+
+
 function LoadingFallback() {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -14,8 +17,8 @@ function LoadingFallback() {
 function AppRoutes() {
   return (
     <>
-      <AppBar position="static" sx={{ backgroundColor: "#BB6AF0" }}>
-        <Toolbar>
+      <AppBar position="static" >
+        {/* <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Ditto App
           </Typography>
@@ -25,7 +28,9 @@ function AppRoutes() {
           <Button color="inherit" component={RouterLink} to="/curso">
             Curso
           </Button>
-        </Toolbar>
+        </Toolbar> */}
+
+        <Navbar />
       </AppBar>
 
       <Box>

@@ -4,7 +4,8 @@ import Footer from "../../components/layout/footer"
 
 export default function LoginPages(){
     return(
-        <><Navbar />
+        <>
+        {/* <Navbar /> */}
         <LoginForm />
         <Footer />
         </>
