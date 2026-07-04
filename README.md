@@ -17,3 +17,12 @@ SuperDittoApp/Jobcrafter/Micraft es una plataforma para impulsar el empleo infor
 - El seguimiento del usuario va a ser del servicio que está recibiendo de un trabajdor, cuanto se termine el servicio, envío de formulario de satisfacción, etc.
 
 ## Diseño de la plataforma
+- Login
+- Registro. Se pueden registrar usuario, trabajadores, y soporte.
+- Inicio. La pantalla de inicio será un chat conectado a IA donde el usuario va a escribir sus necesidades o su problema y en base a los trabajadoes en la base de datos la IA va a sugerir trabajadores. La pantalla de inicio debe ser diferente para el usuario registrado y para el usuario no registrado.
+- Pantalla de terminos y condiciones donde el usuario acepte compartir su información siguiendo estandares de calidad y privacidad de la plataforma.
+- Inicio de trabajadores. Va a ser un dashboard que muestre su hisorial de cursos y aprendizaje y las personas que han solicitado sus servicios.
+- Perfil de usuario. El usuario puede ingresar datos de contacto e información personal para facilitar la busqueda de servicios.
+- Perfil de trabajdor. El trabajador puede agregar experiencia, historial académico e información personal y de contacto para hacer más fácil de encontrar su perfil para los usuarios.
+- Lista de cursos. El trabajador puede elegir un curso, enlistarse en él y ver el resumen y contenido del curso.
+- Visor de curso. El trabajador puede ver las diapositivas, videos y lecciones necesarias para completar el curso y agregarlo a su perfil.
