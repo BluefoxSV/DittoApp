@@ -38,6 +38,12 @@ SuperDittoApp/Jobcrafter/Micraft es una plataforma para impulsar el empleo infor
 
 - Combinar con TAILWIND
 
+
+## Política de servicios
+Los trabajadores pueden ofrecer sus servicios y los usuarios pueden solicitar servicios de los trabajadores según su especialidad.
+El pago de cada servicio lo establece el trabajador pero el usuario puede poner un precio estimado que está dispuesto a pagar al momento de hacer la solicitud.
+
+
 ## Estructura del proyecto.
 
 ```txt
