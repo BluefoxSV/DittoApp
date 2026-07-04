@@ -25,7 +25,7 @@ function getInitialDataByRole(role) {
   return role === ROLES.WORKER ? WORKER_SAMPLE_DATA : USER_SAMPLE_DATA
 }
 
-export default function ProfileExample({ role = ROLES.USER }) {
+export function ProfileExample({ role = ROLES.USER }) {
   return (
     <Profile
       role={role}
@@ -34,7 +34,7 @@ export default function ProfileExample({ role = ROLES.USER }) {
   )
 }
 
-export function ProfileExamples() {
+export default function ProfileExamples() {
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
