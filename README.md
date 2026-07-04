@@ -40,6 +40,7 @@ SuperDittoApp/Jobcrafter/Micraft es una plataforma para impulsar el empleo infor
 
 ## Estructura del proyecto.
 
+```txt
 DittoApp/
 ├── public/
 │
@@ -71,4 +72,5 @@ DittoApp/
 │   │   └── Archivo que invoca TailwindCSS y estilos globales del proyecto.
 │   │
 │   └── main.jsx
-│       └── Archivo principal que crea el root de React.OR ROOT)
+│       └── Archivo principal que crea el root de React.
+```
