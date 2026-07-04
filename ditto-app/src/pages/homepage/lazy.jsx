@@ -9,6 +9,8 @@ const homepageLazy = {
       path: '/',
       element: <HomePage />,
     },
+
+    {path: '/404', element: <div>Página no encontrada</div>},
   ],
 };
 
