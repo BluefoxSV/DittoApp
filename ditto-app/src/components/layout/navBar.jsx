@@ -57,7 +57,7 @@ export default function Navbar() {
         position="fixed"
         elevation={0}
         sx={{
-          backgroundColor: "#041021",
+          backgroundColor: "#953CD1",
           borderBottom: "1px solid rgba(255,255,255,0.08)",
           transition: "transform 0.3s ease-in-out",
           transform: showNavbar ? "translateY(0)" : "translateY(-100%)",
@@ -115,7 +115,7 @@ export default function Navbar() {
                     : "rgba(255,255,255,0.75)",
                   fontWeight: isActiveRoute(item.to) ? 700 : 500,
                   borderBottom: isActiveRoute(item.to)
-                    ? "2px solid #12679b"
+                    ? "2px solid #fff"
                     : "2px solid transparent",
                   borderRadius: 0,
                   px: 2,
