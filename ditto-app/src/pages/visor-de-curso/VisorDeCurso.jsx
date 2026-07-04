@@ -15,19 +15,15 @@ import {
 export default function VisorDeCurso() {
   return (
     <>
-      <AppBar position="static">
+      <AppBar sx={{ background: '#953CD1' }} position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Visor de Curso
+            Bienvenido al Visor de Curso
           </Typography>
         </Toolbar>
       </AppBar>
 
       <Container maxWidth={false} disableGutters sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Bienvenido al Visor de Curso
-        </Typography>
-
         <Grid container spacing={3} sx={{ mt: 2 }}>
           {[1, 2, 3, 4, 5, 6].map((item) => (
             <Grid item xs={12} sm={6} md={4} key={item}>

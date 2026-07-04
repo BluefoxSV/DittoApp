@@ -51,22 +51,15 @@ const cursos = [
 export default function ListCourses() {
   return (
     <>
-      <AppBar position="static">
+      <AppBar sx={{ background: '#953CD1' }} position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Lista de Cursos
+            Explora nuestros cursos
           </Typography>
         </Toolbar>
       </AppBar>
 
       <Container maxWidth={false} disableGutters sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Explora nuestros cursos
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          Elige un curso para ver su contenido, módulos y recursos disponibles.
-        </Typography>
-
         <Box
           sx={{
             display: 'grid',
