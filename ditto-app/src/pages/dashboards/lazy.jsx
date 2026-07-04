@@ -1,8 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { lazy } from 'react';
 
-const userDashboard = lazy(() => import('./userdash.jsx'));
-const workerDashboard = lazy(() => import('./workerdash.jsx'));
+const dashusu = lazy(() => import('./dashusu.jsx'));
+const dashtrabaja = lazy(() => import('./dashtrabaja.jsx'));
 
 const userDashboardLazy = {
   routes: [
