@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { BrowserRouter, Link as RouterLink, Route, Routes } from 'react-router-dom';
-import { AppBar, Box, Button, CircularProgress, Container, Toolbar, Typography } from '@mui/material';
+import { AppBar, Box, Button, CircularProgress, Toolbar, Typography } from '@mui/material';
 import lazyMain from './lazyMain';
 
 function LoadingFallback() {
@@ -28,7 +28,7 @@ function AppRoutes() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ py: 4 }}>
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             {lazyMain.routes.map((route) => (
@@ -36,7 +36,7 @@ function AppRoutes() {
             ))}
           </Routes>
         </Suspense>
-      </Container>
+      </Box>
     </>
   );
 }

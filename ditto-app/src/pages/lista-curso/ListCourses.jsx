@@ -61,7 +61,7 @@ export default function ListCourses() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container  sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Explora nuestros cursos
         </Typography>
