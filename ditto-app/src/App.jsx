@@ -16,21 +16,11 @@ function LoadingFallback() {
 
 function AppRoutes() {
   return (
-    <>
-      <AppBar position="static" >
-        {/* <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Ditto App
-          </Typography>
-          <Button color="inherit" component={RouterLink} to="/">
-            Inicio
-          </Button>
-          <Button color="inherit" component={RouterLink} to="/curso">
-            Curso
-          </Button>
-        </Toolbar> */}
-
+    <Box sx={{ '--ditto-navbar-height': { xs: '56px', sm: '64px' } }}>
+      <AppBar position="static" sx={{ backgroundColor: "#BB6AF0" }}>
         <Navbar />
+
+       
       </AppBar>
 
       <Box>
@@ -42,7 +32,7 @@ function AppRoutes() {
           </Routes>
         </Suspense>
       </Box>
-    </>
+    </Box>
   );
 }
 
