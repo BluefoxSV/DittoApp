@@ -19,10 +19,7 @@ import {
 import { useUpdateWorkerLocationMutation } from "../../store/api/workersApi";
 import { formatDistanceKm } from "../../utils/distance";
 import ServiceRequestDialog from "./serviceRequestDialog";
-import {
-  getApiErrorMessage,
-  getServiceStatus,
-} from "./serviceRequestUi";
+import { getApiErrorMessage, getServiceStatus, formatServiceDate } from "./serviceRequestUi";
 
 const courseProgress = [
   { title: "Instalaciones eléctricas básicas", percent: 80 },
@@ -58,8 +55,12 @@ export default function WorkerDashboard() {
   const [dialogRequestId, setDialogRequestId] = useState(null);
   const lastSyncedLocationRef = useRef("");
 
-  const { coords, error: geoError, isLoading: isLoadingGeo, refresh: refreshGeo } =
-    useGeolocation();
+  const {
+    coords,
+    error: geoError,
+    isLoading: isLoadingGeo,
+    refresh: refreshGeo,
+  } = useGeolocation();
   const [updateWorkerLocation] = useUpdateWorkerLocationMutation();
 
   const requestQueryArgs = useMemo(
@@ -122,7 +123,13 @@ export default function WorkerDashboard() {
   }, [feedRequests, myRequests]);
 
   const orderedMine = useMemo(() => {
-    const priority = { pending: 0, in_progress: 1, rejected: 2, completed: 3, cancelled: 4 };
+    const priority = {
+      pending: 0,
+      in_progress: 1,
+      rejected: 2,
+      completed: 3,
+      cancelled: 4,
+    };
     return [...myRequests].sort(
       (a, b) =>
         (priority[a.status] ?? 5) - (priority[b.status] ?? 5) ||
@@ -153,7 +160,8 @@ export default function WorkerDashboard() {
     return (
       <Box className="p-4 md:p-8 min-h-[60vh] bg-[#FCFCF5]">
         <Alert severity="warning">
-          Necesitas iniciar sesión como trabajador y completar tu perfil para ver solicitudes.
+          Necesitas iniciar sesión como trabajador y completar tu perfil para
+          ver solicitudes.
         </Alert>
       </Box>
     );
@@ -177,18 +185,30 @@ export default function WorkerDashboard() {
           {isLoadingGeo ? (
             <CircularProgress size={16} />
           ) : coords ? (
-            <Typography sx={FONT} className="text-xs text-emerald-700 font-semibold">
+            <Typography
+              sx={FONT}
+              className="text-xs text-emerald-700 font-semibold"
+            >
               <i className="ti ti-map-pin mr-1" aria-hidden="true" />
               Ubicación activa
             </Typography>
           ) : (
-            <Button size="small" onClick={refreshGeo} sx={{ ...FONT, textTransform: "none" }}>
+            <Button
+              size="small"
+              onClick={refreshGeo}
+              sx={{ ...FONT, textTransform: "none" }}
+            >
               Activar ubicación
             </Button>
           )}
           <Chip
             label={workerProfile.experience || "Perfil profesional"}
-            sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
+            sx={{
+              ...FONT,
+              bgcolor: "#f4e7fd",
+              color: "#874cad",
+              fontWeight: 700,
+            }}
           />
           <Avatar sx={avatarSx}>{initials}</Avatar>
         </Box>
@@ -196,7 +216,8 @@ export default function WorkerDashboard() {
 
       {geoError ? (
         <Alert severity="info" className="mb-4">
-          Activa la ubicación para ver solicitudes cercanas en el feed. {geoError}
+          Activa la ubicación para ver solicitudes cercanas en el feed.{" "}
+          {geoError}
         </Alert>
       ) : null}
 
@@ -222,7 +243,10 @@ export default function WorkerDashboard() {
             >
               {label}
             </Typography>
-            <Typography sx={FONT} className="text-primary-700 text-3xl font-bold">
+            <Typography
+              sx={FONT}
+              className="text-primary-700 text-3xl font-bold"
+            >
               {value}
             </Typography>
           </Box>
@@ -258,13 +282,23 @@ export default function WorkerDashboard() {
               onClick={() => setDialogRequestId(request.id)}
               key={request.id}
               className={`w-full flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 px-5 py-4 text-left bg-paper hover:bg-primary-50/40 ${
-                index < feedRequests.length - 1 ? "border-b border-gray-200" : ""
+                index < feedRequests.length - 1
+                  ? "border-b border-gray-200"
+                  : ""
               }`}
             >
-              <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
-                {clientLabel(request)} — {request.description}
-                {distance ? ` · ${distance}` : ""}
-              </Typography>
+              <Box className="min-w-0">
+                <Typography
+                  sx={FONT}
+                  className="text-sm font-semibold text-gray-900 min-w-0 truncate"
+                >
+                  {clientLabel(request)} — {request.description}
+                  {distance ? ` · ${distance}` : ""}
+                </Typography>
+                <Typography sx={FONT} className="text-sm text-gray-600 mt-1">
+                  {formatServiceDate(request.created_at)}
+                </Typography>
+              </Box>
               <span
                 className={`text-xs font-bold px-3 py-1 rounded-full border flex-shrink-0 self-start sm:self-center ${status.className}`}
               >
@@ -280,10 +314,13 @@ export default function WorkerDashboard() {
       </Typography>
       {myRequestsError ? (
         <Alert severity="error" className="mb-4">
-          {getApiErrorMessage(myRequestsError, "No se pudieron cargar tus solicitudes.")}
+          {getApiErrorMessage(
+            myRequestsError,
+            "No se pudieron cargar tus solicitudes.",
+          )}
         </Alert>
       ) : null}
-      <Box className="border border-gray-200 rounded-2xl overflow-hidden mb-8">
+      <Box className="border border-primary-200 rounded-2xl overflow-hidden mb-8 bg-primary-50/30">
         {isLoadingMine && orderedMine.length === 0 ? (
           <Box className="p-8 flex justify-center">
             <CircularProgress size={28} />
@@ -307,10 +344,18 @@ export default function WorkerDashboard() {
                 index < orderedMine.length - 1 ? "border-b border-gray-200" : ""
               }`}
             >
-              <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
-                {clientLabel(request)} — {request.description}
-                {distance ? ` · ${distance}` : ""}
-              </Typography>
+              <Box className="min-w-0">
+                <Typography
+                  sx={FONT}
+                  className="text-sm font-semibold text-gray-900 min-w-0 truncate"
+                >
+                  {clientLabel(request)} — {request.description}
+                  {distance ? ` · ${distance}` : ""}
+                </Typography>
+                <Typography sx={FONT} className="text-sm text-gray-600 mt-1">
+                  {formatServiceDate(request.created_at)}
+                </Typography>
+              </Box>
               <span
                 className={`text-xs font-bold px-3 py-1 rounded-full border flex-shrink-0 self-start sm:self-center ${status.className}`}
               >
