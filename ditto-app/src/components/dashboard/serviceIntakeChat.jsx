@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 
-import { useLazyGetSignedUrlQuery } from "../../store/api/elevenlabsApi";
+import { useLazyGetConversationConfigQuery } from "../../store/api/elevenlabsApi";
 import { getApiErrorMessage } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
@@ -58,7 +58,7 @@ function IntakeChatBody({
   const streamingIdRef = useRef(null);
   const endRef = useRef(null);
 
-  const [fetchSignedUrl] = useLazyGetSignedUrlQuery();
+  const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
 
   const appendAgentMessage = useCallback((text) => {
     const cleanText = text.trim();
@@ -139,13 +139,22 @@ function IntakeChatBody({
 
     async function connect() {
       try {
-        const { signed_url: signedUrl } = await fetchSignedUrl().unwrap();
+        const config = await fetchConversationConfig().unwrap();
         if (cancelled) return;
 
-        await startSession({
-          signedUrl,
+        const sessionOptions = {
           userId: userId ? String(userId) : undefined,
-        });
+        };
+
+        if (config.mode === "signed_url" && config.signed_url) {
+          sessionOptions.signedUrl = config.signed_url;
+        } else if (config.mode === "agent_id" && config.agent_id) {
+          sessionOptions.agentId = config.agent_id;
+        } else {
+          throw new Error("Configuración de ElevenLabs inválida.");
+        }
+
+        await startSession(sessionOptions);
         if (cancelled) return;
 
         if (!initialSentRef.current) {
@@ -176,7 +185,7 @@ function IntakeChatBody({
   }, [
     initialDescription,
     userId,
-    fetchSignedUrl,
+    fetchConversationConfig,
     startSession,
     endSession,
     sendUserMessage,
