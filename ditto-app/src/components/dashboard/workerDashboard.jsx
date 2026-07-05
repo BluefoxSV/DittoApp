@@ -1,8 +1,9 @@
-import { Box, Typography, Avatar, Chip, LinearProgress, Skeleton } from "@mui/material";
+import { Box, Typography, Avatar, Chip, LinearProgress } from "@mui/material";
 import MetricCard from "./metricCard";
-import { useCurrentUser } from "../../hooks/useCurrentUser";
 
 const worker = {
+  name: "Carlos Méndez",
+  trade: "Electricista",
   experienceLabel: "Experiencia: oficial (3 años)",
   metrics: { completedCourses: 6, activeRequests: 3, rating: 4.8 },
   requests: [
@@ -26,10 +27,6 @@ const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 const avatarSx = { bgcolor: "#BB6AF0", color: "#fff", width: 40, height: 40, fontSize: 14, fontWeight: 700 };
 
 export default function WorkerDashboard() {
-  const { displayName, trade, initials, isLoading } = useCurrentUser();
-
-  const greetingLine = trade ? `${displayName} — ${trade}` : displayName;
-
   return (
     <Box
       sx={{ ...FONT, bgcolor: "#FCFCF5", color: "#1a1a1a", minHeight: "100%" }}
@@ -38,13 +35,9 @@ export default function WorkerDashboard() {
       <Box className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <Box>
           <Typography sx={FONT} className="text-sm text-gray-600">Hola,</Typography>
-          {isLoading ? (
-            <Skeleton variant="text" width={280} height={36} sx={{ mt: 0.5 }} />
-          ) : (
-            <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
-              {greetingLine}
-            </Typography>
-          )}
+          <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
+            {worker.name} — {worker.trade}
+          </Typography>
         </Box>
         <Box className="flex items-center gap-3">
           <Chip
@@ -52,11 +45,7 @@ export default function WorkerDashboard() {
             title="Basado en años de experiencia y certificaciones, no en idiomas"
             sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
           />
-          {isLoading ? (
-            <Skeleton variant="circular" width={40} height={40} />
-          ) : (
-            <Avatar sx={avatarSx}>{initials}</Avatar>
-          )}
+          <Avatar sx={avatarSx}>CM</Avatar>
         </Box>
       </Box>
 
