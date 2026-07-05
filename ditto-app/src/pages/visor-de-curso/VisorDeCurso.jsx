@@ -20,6 +20,7 @@ import {
   useGetCourseLessonsQuery,
   useGetCourseQuery,
 } from "../../store/api/coursesApi";
+import CreateLessonDialog from "./CreateLessonDialog";
 
 const normalizeYouTubeUrl = (url) => {
   if (!url) return "";
@@ -49,6 +50,7 @@ export default function VisorDeCurso() {
   const parsedCourseId = Number(courseId);
   const hasValidCourseId = Number.isInteger(parsedCourseId) && parsedCourseId > 0;
   const [selectedLessonId, setSelectedLessonId] = useState(null);
+  const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
   const {
     data: course,
     isLoading: isLoadingCourse,
@@ -63,6 +65,8 @@ export default function VisorDeCurso() {
     lessons.find(({ id }) => id === selectedLessonId) ?? lessons[0] ?? null;
   const isLoading = isLoadingCourse || isLoadingLessons;
   const error = courseError || lessonsError;
+  const nextLessonOrder =
+    lessons.reduce((highest, lesson) => Math.max(highest, lesson.order), -1) + 1;
 
   if (isLoading) {
     return (
@@ -117,6 +121,7 @@ export default function VisorDeCurso() {
           px: 2,
           textAlign: "center",
           borderTop: "1px solid rgba(255,255,255,0.1)",
+          position: "relative",
         }}
       >
         <Typography
@@ -126,6 +131,24 @@ export default function VisorDeCurso() {
         >
           {course.title}
         </Typography>
+        <Button
+          onClick={() => setIsLessonDialogOpen(true)}
+          variant="contained"
+          size="small"
+          sx={{
+            position: { xs: "static", sm: "absolute" },
+            right: 20,
+            top: { sm: "50%" },
+            transform: { sm: "translateY(-50%)" },
+            mt: { xs: 1.5, sm: 0 },
+            bgcolor: "#fff",
+            color: "#8f22af",
+            fontWeight: 800,
+            "&:hover": { bgcolor: "#f7edfc" },
+          }}
+        >
+          Agregar lección
+        </Button>
       </Box>
 
       <Container maxWidth={false} disableGutters>
@@ -445,6 +468,13 @@ export default function VisorDeCurso() {
           </Box>
         </Box>
       </Container>
+
+      <CreateLessonDialog
+        open={isLessonDialogOpen}
+        onClose={() => setIsLessonDialogOpen(false)}
+        courseId={parsedCourseId}
+        nextOrder={nextLessonOrder}
+      />
     </Box>
   );
 }
