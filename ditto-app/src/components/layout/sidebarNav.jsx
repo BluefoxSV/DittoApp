@@ -1,17 +1,31 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Box, Drawer, IconButton, Typography } from "@mui/material";
+import { Box, Drawer, IconButton, Typography, Tooltip } from "@mui/material";
 import { SIDEBAR_ITEMS } from "./data/sidebarData";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 const WIDTH = 224;
 
-function NavContent({ items, onNavigate }) {
+function NavContent({ items, onNavigate, onCollapse }) {
   return (
     <Box sx={FONT} className="h-full min-h-screen bg-gray-100 p-6 flex flex-col">
-      <Typography sx={FONT} className="text-primary-700 font-bold text-lg mb-8">
-        Jobcrafter
-      </Typography>
+      <Box className="flex items-center justify-between mb-8">
+        <Typography sx={FONT} className="text-primary-700 font-bold text-lg">
+          Jobcrafter
+        </Typography>
+        {onCollapse ? (
+          <Tooltip title="Ocultar menu">
+            <IconButton
+              onClick={onCollapse}
+              aria-label="Ocultar menu"
+              size="small"
+              sx={{ color: "#874cad" }}
+            >
+              <i className="ti ti-chevron-left" style={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+        ) : null}
+      </Box>
       <Box className="flex flex-col gap-1.5">
         {items.map(({ key, to, icon, label }) => (
           <NavLink
@@ -37,58 +51,64 @@ function NavContent({ items, onNavigate }) {
 }
 
 /**
- * Sidebar de navegación global, responsive y autónomo.
- * Se monta en el layout global junto a NavBar y Footer.
- * (El layout decide en qué rutas mostrarlo — igual que navbar/footer.)
+ * Sidebar de navegacion global.
+ * Desktop (md+): fijo a la izquierda, con boton para ocultar/mostrar (colapsar).
+ * Movil (<md): Drawer controlado por el navbar.
  *
- * @param {"user"|"worker"} role  qué menú mostrar (default "user")
- *
- * Móvil: hamburguesa flotante que abre un Drawer.
- * Desktop (md+): sidebar fijo a la izquierda.
- * Requiere estar dentro de <BrowserRouter> (por los NavLink).
+ * @param {"user"|"worker"} role
+ * @param {boolean} mobileOpen  drawer movil (lo controla el navbar)
+ * @param {function} onClose    cierra el drawer movil
  */
-export default function SidebarNav({ role = "user" }) {
-  const [open, setOpen] = useState(false);
+export default function SidebarNav({ role = "user", mobileOpen = false, onClose }) {
   const items = SIDEBAR_ITEMS[role] || SIDEBAR_ITEMS.user;
+  const [collapsed, setCollapsed] = useState(false); // solo desktop
 
   return (
     <>
-      {/* Hamburguesa flotante — solo móvil */}
-      <IconButton
-        onClick={() => setOpen(true)}
-        aria-label="Abrir menú"
-        sx={{
-          display: { xs: "inline-flex", md: "none" },
-          position: "fixed",
-          top: 12,
-          left: 12,
-          zIndex: 1200,
-          bgcolor: "#BB6AF0",
-          color: "#fff",
-          "&:hover": { bgcolor: "#a55dd3" },
-        }}
-      >
-        <i className="ti ti-menu-2" />
-      </IconButton>
+      {/* Desktop: fijo, colapsable */}
+      {collapsed ? (
+        // Colapsado: boton flotante fijo (no ocupa columna, no deja franja)
+        <Tooltip title="Mostrar menu">
+          <IconButton
+            onClick={() => setCollapsed(false)}
+            aria-label="Mostrar menu"
+            sx={{
+              display: { xs: "none", md: "inline-flex" },
+              position: "fixed",
+              top: 72,
+              left: 12,
+              zIndex: 1100,
+              bgcolor: "rgba(187, 106, 240, 0.35)",
+              color: "#fff",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.4)",
+              boxShadow: 2,
+              "&:hover": { bgcolor: "rgba(187, 106, 240, 0.55)" },
+            }}
+          >
+            <i className="ti ti-chevron-right" style={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <Box
+          component="nav"
+          sx={{ width: WIDTH, flexShrink: 0, display: { xs: "none", md: "block" } }}
+          className="border-r border-gray-200"
+        >
+          <NavContent items={items} onCollapse={() => setCollapsed(true)} />
+        </Box>
+      )}
 
-      {/* Desktop: fijo */}
-      <Box
-        component="nav"
-        sx={{ width: WIDTH, flexShrink: 0, display: { xs: "none", md: "block" } }}
-        className="border-r border-gray-200"
-      >
-        <NavContent items={items} />
-      </Box>
-
-      {/* Móvil: drawer */}
+      {/* Movil: drawer controlado desde el navbar */}
       <Drawer
         variant="temporary"
-        open={open}
-        onClose={() => setOpen(false)}
+        open={mobileOpen}
+        onClose={onClose}
         ModalProps={{ keepMounted: true }}
         sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: WIDTH } }}
       >
-        <NavContent items={items} onNavigate={() => setOpen(false)} />
+        <NavContent items={items} onNavigate={onClose} />
       </Drawer>
     </>
   );

@@ -1,6 +1,6 @@
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AppBar, Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import { useSelector } from 'react-redux';
 import lazyMain from './lazyMain';
 
@@ -9,8 +9,7 @@ import Navbar from './components/layout/navBar';
 import Footer from './components/layout/footer';
 import SidebarNav from './components/layout/sidebarNav';
 
-// Rutas donde el sidebar NO se muestra (navbar y footer siguen visibles siempre,
-// como los dejó el compañero). Ajustar a los paths reales.
+// Rutas donde el sidebar NO se muestra (navbar y footer siguen visibles siempre).
 const RUTAS_SIN_SIDEBAR = ['/', '/login', '/register', '/registro'];
 
 function LoadingFallback() {
@@ -25,6 +24,7 @@ function AppRoutes() {
   const { pathname } = useLocation();
   const role = useSelector((state) => state.auth.user?.role);
   const conSidebar = !RUTAS_SIN_SIDEBAR.includes(pathname);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const contenido = (
     <Suspense fallback={<LoadingFallback />}>
@@ -43,13 +43,16 @@ function AppRoutes() {
 
   return (
     <Box sx={{ '--ditto-navbar-height': { xs: '56px', sm: '64px' } }}>
-      <AppBar position="static" sx={{ backgroundColor: '#BB6AF0' }}>
-        <Navbar />
-      </AppBar>
+      {/* la hamburguesa del navbar abre el sidebar movil solo cuando hay sidebar */}
+      <Navbar onMenuClick={conSidebar ? () => setMobileOpen(true) : undefined} />
 
       {conSidebar ? (
         <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-          <SidebarNav role={role === 'worker' || role === 'support' ? role : 'user'} />
+          <SidebarNav
+            role={role === 'worker' || role === 'support' ? role : 'user'}
+            mobileOpen={mobileOpen}
+            onClose={() => setMobileOpen(false)}
+          />
           <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
             {contenido}
           </Box>
