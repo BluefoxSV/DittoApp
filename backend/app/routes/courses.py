@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies.auth import get_user, require_roles
+from app.dependencies.auth import get_user
 from app.models.user import User, UserRole
 from app.models.worker import WorkerProfile
 from app.schemas.course import (
@@ -26,7 +26,7 @@ async def _get_owned_worker(worker_id: int, current_user: User) -> WorkerProfile
 @router.post("", response_model=CourseRead, status_code=201)
 async def create_course(
     data: CourseCreate,
-    _: User = Depends(require_roles(UserRole.SUPPORT)),
+    _: User = Depends(get_user),
 ):
     return await course_service.create_course(data)
 
@@ -45,7 +45,7 @@ async def get_course(course_id: int):
 async def add_lesson(
     course_id: int,
     data: CourseLessonCreate,
-    _: User = Depends(require_roles(UserRole.SUPPORT)),
+    _: User = Depends(get_user),
 ):
     return await course_service.add_lesson(course_id, data)
 
