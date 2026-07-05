@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Alert,
+  Box,
   Button,
   CircularProgress,
   Dialog,
@@ -72,70 +73,70 @@ export default function CreateLessonDialog({
       maxWidth="sm"
       PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ fontWeight: 700 }}>Agregar lección</DialogTitle>
-      <DialogContent component="form" id="create-lesson-form" onSubmit={handleSubmit}>
-        {error ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error?.data?.detail || "No se pudo agregar la lección."}
-          </Alert>
-        ) : null}
-        <TextField
-          label="Título de la lección"
-          value={form.title}
-          onChange={updateField("title")}
-          required
-          fullWidth
-          autoFocus
-          inputProps={{ maxLength: 255 }}
-          sx={{ mt: 1, mb: 2 }}
-        />
-        <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel id="lesson-content-type-label">Tipo de contenido</InputLabel>
-          <Select
-            labelId="lesson-content-type-label"
-            label="Tipo de contenido"
-            value={form.contentType}
-            onChange={updateField("contentType")}
+      <Box component="form" onSubmit={handleSubmit} noValidate>
+        <DialogTitle sx={{ fontWeight: 700 }}>Agregar lección</DialogTitle>
+        <DialogContent>
+          {error ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error?.data?.detail || "No se pudo agregar la lección."}
+            </Alert>
+          ) : null}
+          <TextField
+            label="Título de la lección"
+            value={form.title}
+            onChange={updateField("title")}
+            required
+            fullWidth
+            autoFocus
+            inputProps={{ maxLength: 255 }}
+            sx={{ mt: 1, mb: 2 }}
+          />
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel id="lesson-content-type-label">Tipo de contenido</InputLabel>
+            <Select
+              labelId="lesson-content-type-label"
+              label="Tipo de contenido"
+              value={form.contentType}
+              onChange={updateField("contentType")}
+            >
+              <MenuItem value="video">Video</MenuItem>
+              <MenuItem value="slide">Presentación o documento</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="URL del contenido"
+            value={form.contentUrl}
+            onChange={updateField("contentUrl")}
+            required
+            fullWidth
+            inputProps={{ maxLength: 500 }}
+            helperText="Admite enlaces de YouTube, videos, presentaciones o documentos."
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Orden"
+            value={form.order}
+            onChange={updateField("order")}
+            type="number"
+            fullWidth
+            inputProps={{ min: 0 }}
+            helperText={`Opcional. El siguiente orden disponible es ${nextOrder}.`}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={closeDialog} disabled={isLoading} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            color="secondary"
+            disabled={!form.title.trim() || !form.contentUrl.trim() || isLoading}
           >
-            <MenuItem value="video">Video</MenuItem>
-            <MenuItem value="slide">Presentación o documento</MenuItem>
-          </Select>
-        </FormControl>
-        <TextField
-          label="URL del contenido"
-          value={form.contentUrl}
-          onChange={updateField("contentUrl")}
-          type="url"
-          required
-          fullWidth
-          inputProps={{ maxLength: 500 }}
-          helperText="Admite enlaces de YouTube, videos, presentaciones o documentos."
-          sx={{ mb: 2 }}
-        />
-        <TextField
-          label="Orden"
-          value={form.order}
-          onChange={updateField("order")}
-          type="number"
-          fullWidth
-          inputProps={{ min: 0 }}
-          helperText={`Opcional. El siguiente orden disponible es ${nextOrder}.`}
-        />
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={closeDialog} disabled={isLoading} color="inherit">
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          form="create-lesson-form"
-          variant="contained"
-          color="secondary"
-          disabled={!form.title.trim() || !form.contentUrl.trim() || isLoading}
-        >
-          {isLoading ? <CircularProgress size={20} color="inherit" /> : "Agregar"}
-        </Button>
-      </DialogActions>
+            {isLoading ? <CircularProgress size={20} color="inherit" /> : "Agregar"}
+          </Button>
+        </DialogActions>
+      </Box>
     </Dialog>
   );
 }

@@ -25,6 +25,7 @@ import {
 import CreateCourseDialog from "./CreateCourseDialog";
 
 const FALLBACK_IMAGE = "/images/ditto-cursos.png";
+const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
 function getApiError(error, fallback) {
   return error?.data?.detail ?? fallback;
@@ -66,10 +67,25 @@ export default function ListCourses() {
   };
 
   return (
-    <>
-      <AppBar sx={{ background: "#953CD1" }} position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+    <Box
+      sx={{
+        ...FONT,
+        minHeight: "calc(100svh - var(--ditto-navbar-height, 64px))",
+        bgcolor: "#FCFCF5",
+        color: "#1a1a1a",
+      }}
+    >
+      <AppBar
+        elevation={0}
+        sx={{ background: "#953CD1", color: "#fff" }}
+        position="static"
+      >
+        <Toolbar sx={{ px: { xs: 2, md: 3 } }}>
+          <Typography
+            variant="h6"
+            component="h1"
+            sx={{ ...FONT, flexGrow: 1, color: "#fff", fontWeight: 700 }}
+          >
             Explora nuestros cursos
           </Typography>
           {canCreateCourses ? (
@@ -79,6 +95,7 @@ export default function ListCourses() {
               sx={{
                 bgcolor: "#fff",
                 color: "#7c2baa",
+                borderRadius: 2.5,
                 fontWeight: 700,
                 "&:hover": { bgcolor: "#f7edfc" },
               }}
@@ -89,14 +106,24 @@ export default function ListCourses() {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth={false} disableGutters sx={{ py: 4 }}>
+      <Container
+        component="main"
+        maxWidth={false}
+        disableGutters
+        sx={{
+          minHeight: 520,
+          bgcolor: "#FCFCF5",
+          px: { xs: 2, md: 3 },
+          py: { xs: 3, md: 4 },
+        }}
+      >
         {coursesError ? (
-          <Alert severity="error" sx={{ mb: 3, mx: { xs: 2, md: 3 } }}>
+          <Alert severity="error" sx={{ mb: 3 }}>
             {getApiError(coursesError, "No se pudieron cargar los cursos.")}
           </Alert>
         ) : null}
         {enrollmentsError ? (
-          <Alert severity="error" sx={{ mb: 3, mx: { xs: 2, md: 3 } }}>
+          <Alert severity="error" sx={{ mb: 3 }}>
             {getApiError(
               enrollmentsError,
               "No se pudieron consultar tus inscripciones.",
@@ -104,7 +131,7 @@ export default function ListCourses() {
           </Alert>
         ) : null}
         {enrollmentError ? (
-          <Alert severity="error" sx={{ mb: 3, mx: { xs: 2, md: 3 } }}>
+          <Alert severity="error" sx={{ mb: 3 }}>
             {getApiError(enrollmentError, "No se pudo completar la inscripción.")}
           </Alert>
         ) : null}
@@ -129,7 +156,8 @@ export default function ListCourses() {
             gridTemplateColumns: {
               xs: "1fr",
               sm: "repeat(2, minmax(0, 1fr))",
-              lg: "repeat(4, minmax(0, 1fr))",
+              lg: "repeat(3, minmax(0, 1fr))",
+              xl: "repeat(4, minmax(0, 1fr))",
             },
             gap: 3,
             alignItems: "stretch",
@@ -141,11 +169,16 @@ export default function ListCourses() {
               <Box key={course.id} sx={{ minWidth: 0 }}>
                 <Card
                   sx={{
-                    height: 400,
+                    height: "100%",
+                    minHeight: 420,
                     width: "100%",
                     display: "flex",
                     flexDirection: "column",
-                    boxShadow: 3,
+                    bgcolor: "#fff",
+                    color: "#1f2937",
+                    textAlign: "left",
+                    border: "1px solid #eadff1",
+                    boxShadow: "0 8px 24px rgba(65, 35, 82, 0.08)",
                     borderRadius: 3,
                     overflow: "hidden",
                   }}
@@ -156,7 +189,7 @@ export default function ListCourses() {
                     alt={course.title}
                     sx={{
                       width: "calc(100% - 24px)",
-                      height: 150,
+                      height: 170,
                       mx: "auto",
                       mt: 1.5,
                       objectFit: "cover",
@@ -170,6 +203,7 @@ export default function ListCourses() {
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "space-between",
+                      textAlign: "left",
                     }}
                   >
                     <Box>
@@ -194,7 +228,11 @@ export default function ListCourses() {
                         variant="h5"
                         component="div"
                         sx={{
+                          ...FONT,
                           mb: 1.5,
+                          color: "#1f2937",
+                          fontWeight: 700,
+                          lineHeight: 1.25,
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
@@ -217,13 +255,23 @@ export default function ListCourses() {
                       </Typography>
                     </Box>
                   </CardContent>
-                  <CardActions sx={{ px: 2, pb: 2, mt: "auto" }}>
+                  <CardActions
+                    sx={{
+                      px: 2,
+                      pb: 2,
+                      mt: "auto",
+                      justifyContent: "flex-start",
+                      flexWrap: "wrap",
+                      gap: 1,
+                      "& > :not(style) ~ :not(style)": { ml: 0 },
+                    }}
+                  >
                     <Button
                       component={RouterLink}
                       to={`/curso/${course.id}`}
                       size="small"
                       variant="contained"
-                      sx={{ mr: 1 }}
+                      sx={{ ...FONT }}
                       color="secondary"
                     >
                       Ver curso
@@ -266,6 +314,6 @@ export default function ListCourses() {
         open={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
       />
-    </>
+    </Box>
   );
 }
