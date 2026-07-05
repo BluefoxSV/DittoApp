@@ -35,7 +35,6 @@ export const workersApi = apiSlice.injectEndpoints({
         method: "PATCH",
         body: { latitude, longitude },
       }),
-      invalidatesTags: ["Worker"],
     }),
   }),
 });
