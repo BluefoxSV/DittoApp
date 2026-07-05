@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -50,6 +50,7 @@ export default function WorkerDashboard() {
   } = useCurrentUser();
   const workerId = workerProfile?.id;
   const [dialogRequestId, setDialogRequestId] = useState(null);
+  const lastSyncedLocationRef = useRef("");
 
   const { coords, error: geoError, isLoading: isLoadingGeo, refresh: refreshGeo } =
     useGeolocation();
@@ -57,13 +58,15 @@ export default function WorkerDashboard() {
 
   const requestQueryArgs = useMemo(
     () =>
-      workerId
+      workerId && coords
         ? {
             workerId,
-            lat: coords?.latitude,
-            lng: coords?.longitude,
+            lat: coords.latitude,
+            lng: coords.longitude,
           }
-        : { workerId: undefined },
+        : workerId
+          ? { workerId }
+          : { workerId: undefined },
     [workerId, coords],
   );
 
@@ -94,6 +97,9 @@ export default function WorkerDashboard() {
 
   useEffect(() => {
     if (!workerId || !coords) return;
+    const locationKey = `${coords.latitude},${coords.longitude}`;
+    if (lastSyncedLocationRef.current === locationKey) return;
+    lastSyncedLocationRef.current = locationKey;
     updateWorkerLocation({
       workerId,
       latitude: coords.latitude,
@@ -161,7 +167,7 @@ export default function WorkerDashboard() {
             {displayName} — {trade || "Trabajador"}
           </Typography>
         </Box>
-        <Box className="flex items-center gap-3">
+        <Box className="flex items-center gap-3 min-w-[120px] justify-end">
           {isLoadingGeo ? (
             <CircularProgress size={16} />
           ) : coords ? (
@@ -226,7 +232,7 @@ export default function WorkerDashboard() {
         </Alert>
       ) : null}
       <Box className="border border-primary-200 rounded-2xl overflow-hidden mb-8 bg-primary-50/30">
-        {isLoadingFeed ? (
+        {isLoadingFeed && feedRequests.length === 0 ? (
           <Box className="p-8 flex justify-center">
             <CircularProgress size={28} />
           </Box>
@@ -272,7 +278,7 @@ export default function WorkerDashboard() {
         </Alert>
       ) : null}
       <Box className="border border-gray-200 rounded-2xl overflow-hidden mb-8">
-        {isLoadingMine ? (
+        {isLoadingMine && orderedMine.length === 0 ? (
           <Box className="p-8 flex justify-center">
             <CircularProgress size={28} />
           </Box>
