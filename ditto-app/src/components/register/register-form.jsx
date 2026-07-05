@@ -122,9 +122,14 @@ function getErrorMessage(error, fallback) {
   return fallback;
 }
 
-function buildInitialForm(role) {
-  const profileFields = getFieldsByRole(role);
-  const profileState = Object.fromEntries(profileFields.map(({ key }) => [key, ""]));
+function buildEmptyForm(role = ROLES.USER) {
+  const userFields = getFieldsByRole(ROLES.USER);
+  const workerFields = getFieldsByRole(ROLES.WORKER);
+  const allKeys = new Set([
+    ...userFields.map(({ key }) => key),
+    ...workerFields.map(({ key }) => key),
+  ]);
+  const profileState = Object.fromEntries([...allKeys].map((key) => [key, ""]));
 
   return {
     email: "",
@@ -137,7 +142,7 @@ function buildInitialForm(role) {
 }
 
 export default function RegisterForm() {
-  const [form, setForm] = useState(() => buildInitialForm(ROLES.USER));
+  const [form, setForm] = useState(() => buildEmptyForm(ROLES.USER));
   const [error, setError] = useState("");
   const [touched, setTouched] = useState({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -171,10 +176,8 @@ export default function RegisterForm() {
 
   const handleRoleChange = (event) => {
     const role = event.target.value;
-    setForm(buildInitialForm(role));
+    setForm((prev) => ({ ...prev, role }));
     setError("");
-    setTouched({});
-    setSubmitAttempted(false);
   };
 
   const handleChange = (field) => (event) => {
