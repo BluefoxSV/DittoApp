@@ -14,6 +14,9 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import ArrowBackIosNewRounded from '@mui/icons-material/ArrowBackIosNewRounded';
+import ArrowForwardIosRounded from '@mui/icons-material/ArrowForwardIosRounded';
+import FiberManualRecordRounded from '@mui/icons-material/FiberManualRecordRounded';
 import { Link as RouterLink } from 'react-router-dom';
 import Navbar from '../../components/layout/navBar';
 
@@ -241,42 +244,50 @@ export default function HomePage() {
                 {slide.secondaryAction}
               </Button>
             </Stack>
-            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mt: { xs: 1.5, md: 2.25 } }}>
+            <Stack direction="row" alignItems="center" justifyContent="center" spacing={1} sx={{ mt: { xs: 2, md: 2.5 } }}>
               <IconButton
                 aria-label="Diapositiva anterior"
                 onClick={showPreviousSlide}
                 size="small"
                 sx={{ color: '#fff', border: '1px solid rgba(255,255,255,.35)' }}
               >
-                ‹
+                <ArrowBackIosNewRounded fontSize="small" />
               </IconButton>
-              {slides.map((item, index) => (
-                <Box
-                  component="button"
-                  key={item.title}
-                  type="button"
-                  aria-label={`Ir a diapositiva ${index + 1}`}
-                  aria-current={activeSlide === index}
-                  onClick={() => setActiveSlide(index)}
-                  sx={{
-                    width: activeSlide === index ? 28 : 9,
-                    height: 9,
-                    p: 0,
-                    border: 0,
-                    borderRadius: 5,
-                    bgcolor: activeSlide === index ? '#f59e0b' : 'rgba(255,255,255,.5)',
-                    cursor: 'pointer',
-                    transition: 'all 200ms ease',
-                  }}
-                />
-              ))}
+
+              <Stack direction="row" alignItems="center" spacing={1}>
+                {slides.map((item, index) => (
+                  <IconButton
+                    key={item.title}
+                    aria-label={`Ir a diapositiva ${index + 1}`}
+                    aria-current={activeSlide === index}
+                    onClick={() => setActiveSlide(index)}
+                    size="small"
+                    sx={{
+                      minWidth: 10,
+                      width: 10,
+                      height: -15,
+                      p: 0,
+                      color: activeSlide === index ? '#f59e0b' : 'rgba(255,255,255,.65)',
+                      opacity: activeSlide === index ? 1 : 0.65,
+                      transition: 'all 200ms ease',
+                      '&:hover': {
+                        color: '#fbbf24',
+                        transform: 'scale(1.08)',
+                      },
+                    }}
+                  >
+                    <FiberManualRecordRounded fontSize="inherit" />
+                  </IconButton>
+                ))}
+              </Stack>
+
               <IconButton
                 aria-label="Siguiente diapositiva"
                 onClick={showNextSlide}
                 size="small"
                 sx={{ color: '#fff', border: '1px solid rgba(255,255,255,.35)' }}
               >
-                ›
+                <ArrowForwardIosRounded fontSize="small" />
               </IconButton>
             </Stack>
           </Box>
@@ -331,7 +342,7 @@ export default function HomePage() {
           <Chip label="Servicios para cada necesidad" color="secondary" variant="outlined" />
           <Typography
             component="h2"
-            sx={{ mt: 2, fontSize: { xs: '2rem', md: '3rem' }, fontWeight: 800, letterSpacing: '-.035em' }}
+            sx={{ mt: 2, fontSize: { xs: '2rem', md: '3rem' }, fontWeight: 800, letterSpacing: '-.035em', color: '#171226' }}
           >
             Soluciones reales, de personas que saben hacer el trabajo
           </Typography>
@@ -366,7 +377,7 @@ export default function HomePage() {
                   <Typography color="text.secondary" sx={{ mt: 0.75 }}>
                     {service.detail}
                   </Typography>
-                  <Button href="#como-funciona" sx={{ mt: 2, px: 0, fontWeight: 700 }}>
+                  <Button href="#como-funciona" sx={{ mt: 2, px: 0, fontWeight: 700 }} color="secondary">
                     Ver profesionales&nbsp; →
                   </Button>
                 </CardContent>
@@ -416,7 +427,7 @@ export default function HomePage() {
               <Chip label="Cursos en la Super App Ditto" sx={{ bgcolor: '#ede9fe', color: '#5b21b6' }} />
               <Typography
                 component="h2"
-                sx={{ mt: 2, fontSize: { xs: '2.1rem', md: '3.25rem' }, fontWeight: 850, letterSpacing: '-.04em' }}
+                sx={{ mt: 2, fontSize: { xs: '2.1rem', md: '3.25rem' }, fontWeight: 850, letterSpacing: '-.04em', color: '#171226' }}
               >
                 Tu talento puede llevarte más lejos
               </Typography>
@@ -442,7 +453,7 @@ export default function HomePage() {
                   </Typography>
                 </Box>
               </Stack>
-              <Button component={RouterLink} to="/curso" variant="contained" size="large" sx={{ mt: 4 }}>
+              <Button component={RouterLink} to="/curso" variant="contained" size="large" sx={{ mt: 4 }} color="secondary">
                 Ver todos los cursos
               </Button>
             </Grid>
@@ -472,9 +483,9 @@ export default function HomePage() {
                   Empieza a aprender hoy
                 </Typography>
               </Box>
-              <Button component={RouterLink} to="/curso">
+              {/* <Button component={RouterLink} to="/curso">
                 Ver catálogo completo&nbsp; →
-              </Button>
+              </Button> */}
             </Stack>
             <Grid container spacing={3}>
               {courses.map((course) => (
@@ -510,7 +521,7 @@ export default function HomePage() {
                         <Typography variant="caption">▤ {course.lessons}</Typography>
                         <Typography variant="caption">◷ {course.duration}</Typography>
                       </Stack>
-                      <Button component={RouterLink} to="/curso" fullWidth variant="outlined" sx={{ mt: 2.5 }}>
+                      <Button component={RouterLink} to="/curso" fullWidth variant="outlined" sx={{ mt: 2.5 }} color="secondary">
                         Ver curso
                       </Button>
                     </CardContent>
