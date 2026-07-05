@@ -32,6 +32,16 @@ export const coursesApi = apiSlice.injectEndpoints({
         { type: "Course", id: `LESSONS-${courseId}` },
       ],
     }),
+    addCourseLesson: builder.mutation({
+      query: ({ courseId, ...body }) => ({
+        url: `/courses/${courseId}/lessons`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (_result, _error, { courseId }) => [
+        { type: "Course", id: `LESSONS-${courseId}` },
+      ],
+    }),
     getWorkerCourseEnrollments: builder.query({
       query: (workerId) => `/courses/workers/${workerId}/enrollments`,
       providesTags: (result, _error, workerId) =>
@@ -64,6 +74,7 @@ export const {
   useGetCoursesQuery,
   useGetCourseQuery,
   useGetCourseLessonsQuery,
+  useAddCourseLessonMutation,
   useGetWorkerCourseEnrollmentsQuery,
   useEnrollWorkerInCourseMutation,
 } = coursesApi;
