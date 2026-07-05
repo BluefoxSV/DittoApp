@@ -64,6 +64,16 @@ export default function ServiceRequestDialog({
   const isAssignedToMe = isWorker && request.worker_id === workerId;
   const canClaimFromFeed = isWorker && isOpenFeedItem && request.status === "pending";
   const canRespondAsAssignee = isWorker && isAssignedToMe && request.status === "pending";
+  const clientDisplayName = [
+    request?.client_name,
+    request?.client?.full_name,
+    request?.user?.full_name,
+    request?.full_name,
+    request?.client?.name,
+    request?.user?.name,
+  ]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .find(Boolean);
 
   const changeStatus = async (nextStatus) => {
     try {
@@ -106,11 +116,13 @@ export default function ServiceRequestDialog({
         <Box className="px-5 py-4 flex items-center justify-between gap-4 border-b border-gray-200">
           <Box className="min-w-0">
             <Typography sx={FONT} className="text-xs font-bold text-primary-700">
-              Solicitud #{request.id}
+              {clientDisplayName ?? `Solicitud #${request.id}`}
             </Typography>
-            <Typography sx={FONT} className="text-lg font-bold text-gray-900 truncate mt-0.5">
-              {counterpartLabel}
-            </Typography>
+            {counterpartLabel && counterpartLabel !== clientDisplayName ? (
+              <Typography sx={FONT} className="text-lg font-bold text-gray-900 truncate mt-0.5">
+                {counterpartLabel}
+              </Typography>
+            ) : null}
             {distanceLabel ? (
               <Typography sx={FONT} className="text-xs text-gray-500 mt-1">
                 A {distanceLabel} de tu ubicación
