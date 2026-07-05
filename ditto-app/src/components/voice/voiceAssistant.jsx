@@ -136,6 +136,60 @@ function connectionStatusLabel(status, isConnecting) {
   return status || "Desconocido";
 }
 
+function unlockBrowserAudio() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    const ctx = new AudioCtx();
+    const buffer = ctx.createBuffer(1, 1, 22050);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0);
+    void ctx.resume().finally(() => {
+      void ctx.close();
+    });
+  } catch {
+    // El navegador puede bloquear audio sin gesto del usuario.
+  }
+}
+
+function buildVoiceSessionOptions(config, userId) {
+  const sessionOptions = {
+    userId: userId ? String(userId) : undefined,
+    textOnly: false,
+    overrides: {
+      conversation: { textOnly: false },
+      agent: {
+        language: "es",
+      },
+    },
+  };
+
+  if (config.use_prompt_override === true && config.prompt_override) {
+    sessionOptions.overrides.agent.prompt = { prompt: config.prompt_override };
+    if (config.first_message_override) {
+      sessionOptions.overrides.agent.firstMessage = config.first_message_override;
+    }
+  }
+
+  if (config.mode === "signed_url" && config.signed_url) {
+    sessionOptions.signedUrl = config.signed_url;
+  } else if (config.mode === "agent_id" && config.agent_id) {
+    sessionOptions.agentId = config.agent_id;
+  } else {
+    throw new Error("Configuración de ElevenLabs inválida.");
+  }
+
+  return sessionOptions;
+}
+
+function sendSessionContext(sendContextualUpdate) {
+  if (typeof sendContextualUpdate !== "function") return;
+  sendContextualUpdate(DITTOAPP_SESSION_CONTEXT);
+}
+
 function VoiceIntakeBody({
   userId,
   coords,
@@ -237,6 +291,12 @@ function VoiceIntakeSession({
     if (!initialDescriptionRef.current) {
       initialDescriptionRef.current = cleanText;
       setInitialDescription(cleanText);
+      if (!contextSentRef.current) {
+        contextSentRef.current = true;
+        window.setTimeout(() => {
+          sendSessionContext(sendContextualUpdateRef.current);
+        }, 100);
+      }
     }
 
     setMessages((prev) => {
@@ -271,6 +331,7 @@ function VoiceIntakeSession({
   );
 
   const conversation = useConversation({
+    volume: 1,
     onMessage: (message) => {
       const userText = extractUserText(message);
       if (userText) {
@@ -287,12 +348,6 @@ function VoiceIntakeSession({
       isConnectingRef.current = false;
       setConnectionError(null);
       setIsConnecting(false);
-      window.setTimeout(() => {
-        if (!contextSentRef.current) {
-          contextSentRef.current = true;
-          sendContextualUpdateRef.current?.(DITTOAPP_SESSION_CONTEXT);
-        }
-      }, 250);
     },
     onStatusChange: (newStatus) => {
       if (newStatus === "connected") {
@@ -324,7 +379,8 @@ function VoiceIntakeSession({
     },
   });
 
-  const { startSession, endSession, sendContextualUpdate, status, isSpeaking } = conversation;
+  const { startSession, endSession, sendContextualUpdate, setVolume, status, isSpeaking } =
+    conversation;
   const isConnected = status === "connected";
   const canUsePtt = isConnected && !isSpeaking && !finalSummary;
   const followUpCount = useMemo(
@@ -338,6 +394,11 @@ function VoiceIntakeSession({
     startSessionRef.current = startSession;
     endSessionRef.current = endSession;
   }, [sendContextualUpdate, startSession, endSession]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+    setVolume?.({ volume: 1 });
+  }, [isConnected, setVolume]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -379,34 +440,7 @@ function VoiceIntakeSession({
         if (cancelled || connectAttemptRef.current !== attemptId) return;
 
         setMinFollowUp(config.min_follow_up_questions ?? 3);
-
-        const sessionOptions = {
-          userId: userId ? String(userId) : undefined,
-        };
-
-        if (config.use_prompt_override === true && config.prompt_override) {
-          sessionOptions.overrides = {
-            agent: {
-              prompt: { prompt: config.prompt_override },
-              firstMessage: config.first_message_override,
-              language: "es",
-            },
-          };
-        } else {
-          sessionOptions.overrides = {
-            agent: {
-              language: "es",
-            },
-          };
-        }
-
-        if (config.mode === "signed_url" && config.signed_url) {
-          sessionOptions.signedUrl = config.signed_url;
-        } else if (config.mode === "agent_id" && config.agent_id) {
-          sessionOptions.agentId = config.agent_id;
-        } else {
-          throw new Error("Configuración de ElevenLabs inválida.");
-        }
+        const sessionOptions = buildVoiceSessionOptions(config, userId);
 
         const startFn = startSessionRef.current;
         if (typeof startFn !== "function") {
@@ -419,17 +453,6 @@ function VoiceIntakeSession({
         }
 
         startFn(sessionOptions);
-
-        if (retry === 0) {
-          window.setTimeout(() => {
-            if (cancelled || connectAttemptRef.current !== attemptId) return;
-            if (!isConnectingRef.current) return;
-            const retryFn = startSessionRef.current;
-            if (typeof retryFn === "function") {
-              retryFn(sessionOptions);
-            }
-          }, 600);
-        }
       } catch (error) {
         if (cancelled || connectAttemptRef.current !== attemptId) return;
         if (error?.status === 503 || error?.status === 502) {
@@ -469,28 +492,7 @@ function VoiceIntakeSession({
           const config = await fetchConversationConfig().unwrap();
           if (connectAttemptRef.current !== attemptId) return;
 
-          const sessionOptions = {
-            userId: userId ? String(userId) : undefined,
-            overrides: {
-              agent: {
-                language: "es",
-                ...(config.use_prompt_override === true && config.prompt_override
-                  ? {
-                      prompt: { prompt: config.prompt_override },
-                      firstMessage: config.first_message_override,
-                    }
-                  : {}),
-              },
-            },
-          };
-
-          if (config.mode === "signed_url" && config.signed_url) {
-            sessionOptions.signedUrl = config.signed_url;
-          } else if (config.mode === "agent_id" && config.agent_id) {
-            sessionOptions.agentId = config.agent_id;
-          }
-
-          startSessionRef.current?.(sessionOptions);
+          startSessionRef.current?.(buildVoiceSessionOptions(config, userId));
         } catch (error) {
           setConnectionError(
             getApiErrorMessage(error, "No se pudo reiniciar la entrevista por voz."),
@@ -514,6 +516,7 @@ function VoiceIntakeSession({
   const startPtt = (event) => {
     event.preventDefault();
     if (!canUsePtt) return;
+    unlockBrowserAudio();
     setIsPttActive(true);
     setMicMuted(false);
   };
@@ -550,8 +553,8 @@ function VoiceIntakeSession({
             Entrevista por voz
           </Typography>
           <Typography sx={FONT} className="text-xs text-gray-600 mt-1">
-            Mantén pulsado el micrófono para hablar. Haré preguntas breves para publicar tu
-            solicitud ({followUpCount}/{minFollowUp} mínimo).
+            Al conectar, el asistente te saluda en voz alta. Mantén pulsado el micrófono para
+            responder ({followUpCount}/{minFollowUp} mínimo).
           </Typography>
           <Typography
             sx={FONT}
@@ -883,6 +886,7 @@ export default function VoiceAssistant() {
     isAuthenticated && Boolean(userId) && user?.role !== "worker" && user?.role !== "support";
 
   const handleOpen = () => {
+    unlockBrowserAudio();
     setSessionKey((key) => key + 1);
     setDialogOpen(true);
   };
