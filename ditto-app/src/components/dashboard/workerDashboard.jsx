@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Avatar,
   Box,
+  Button,
   CircularProgress,
   Chip,
   LinearProgress,
@@ -10,7 +11,13 @@ import {
 } from "@mui/material";
 
 import { useCurrentUser } from "../../hooks/useCurrentUser";
-import { useGetWorkerServiceRequestsQuery } from "../../store/api/serviceRequestsApi";
+import { useGeolocation } from "../../hooks/useGeolocation";
+import {
+  useGetNearbyServiceRequestsQuery,
+  useGetWorkerServiceRequestsQuery,
+} from "../../store/api/serviceRequestsApi";
+import { useUpdateWorkerLocationMutation } from "../../store/api/workersApi";
+import { formatDistanceKm } from "../../utils/distance";
 import ServiceRequestDialog from "./serviceRequestDialog";
 import {
   getApiErrorMessage,
@@ -43,23 +50,63 @@ export default function WorkerDashboard() {
   } = useCurrentUser();
   const workerId = workerProfile?.id;
   const [dialogRequestId, setDialogRequestId] = useState(null);
+
+  const { coords, error: geoError, isLoading: isLoadingGeo, refresh: refreshGeo } =
+    useGeolocation();
+  const [updateWorkerLocation] = useUpdateWorkerLocationMutation();
+
+  const requestQueryArgs = useMemo(
+    () =>
+      workerId
+        ? {
+            workerId,
+            lat: coords?.latitude,
+            lng: coords?.longitude,
+          }
+        : { workerId: undefined },
+    [workerId, coords],
+  );
+
   const {
     data: requests = [],
     isLoading,
     error,
-  } = useGetWorkerServiceRequestsQuery(workerId, {
+  } = useGetWorkerServiceRequestsQuery(requestQueryArgs, {
     skip: !workerId,
     pollingInterval: 15000,
   });
 
+  const { data: nearbyRequests = [] } = useGetNearbyServiceRequestsQuery(
+    coords
+      ? { lat: coords.latitude, lng: coords.longitude, radiusKm: 30 }
+      : undefined,
+    { skip: !coords },
+  );
+
+  useEffect(() => {
+    if (!workerId || !coords) return;
+    updateWorkerLocation({
+      workerId,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    });
+  }, [workerId, coords, updateWorkerLocation]);
+
   const orderedRequests = useMemo(() => {
-    const priority = { pending: 0, in_progress: 1, completed: 2, cancelled: 3 };
+    const priority = { pending: 0, in_progress: 1, rejected: 2, completed: 3, cancelled: 4 };
     return [...requests].sort(
       (a, b) =>
-        (priority[a.status] ?? 4) - (priority[b.status] ?? 4) ||
+        (priority[a.status] ?? 5) - (priority[b.status] ?? 5) ||
+        (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity) ||
         new Date(b.created_at) - new Date(a.created_at),
     );
   }, [requests]);
+
+  const nearbyForWorker = useMemo(
+    () => nearbyRequests.filter((request) => request.worker_id === workerId).slice(0, 5),
+    [nearbyRequests, workerId],
+  );
+
   const dialogRequest =
     requests.find(({ id }) => id === dialogRequestId) ?? null;
   const activeRequests = requests.filter(({ status }) =>
@@ -102,6 +149,18 @@ export default function WorkerDashboard() {
           </Typography>
         </Box>
         <Box className="flex items-center gap-3">
+          {isLoadingGeo ? (
+            <CircularProgress size={16} />
+          ) : coords ? (
+            <Typography sx={FONT} className="text-xs text-emerald-700 font-semibold">
+              <i className="ti ti-map-pin mr-1" aria-hidden="true" />
+              Ubicación activa
+            </Typography>
+          ) : (
+            <Button size="small" onClick={refreshGeo} sx={{ ...FONT, textTransform: "none" }}>
+              Activar ubicación
+            </Button>
+          )}
           <Chip
             label={workerProfile.experience || "Perfil profesional"}
             sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
@@ -109,6 +168,12 @@ export default function WorkerDashboard() {
           <Avatar sx={avatarSx}>{initials}</Avatar>
         </Box>
       </Box>
+
+      {geoError ? (
+        <Alert severity="info" className="mb-4">
+          Activa la ubicación para ordenar solicitudes por proximidad. {geoError}
+        </Alert>
+      ) : null}
 
       <Box className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {[
@@ -139,8 +204,43 @@ export default function WorkerDashboard() {
         ))}
       </Box>
 
+      {coords && nearbyForWorker.length > 0 ? (
+        <>
+          <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+            Ofertas más cercanas
+          </Typography>
+          <Box className="border border-primary-200 rounded-2xl overflow-hidden mb-8 bg-primary-50/30">
+            {nearbyForWorker.map((request, index) => {
+              const status = getServiceStatus(request.status);
+              const distance = formatDistanceKm(request.distance_km);
+              return (
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => setDialogRequestId(request.id)}
+                  key={request.id}
+                  className={`w-full flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 px-5 py-4 text-left bg-paper hover:bg-primary-50/40 ${
+                    index < nearbyForWorker.length - 1 ? "border-b border-gray-200" : ""
+                  }`}
+                >
+                  <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
+                    Cliente #{request.user_id} — {request.description}
+                    {distance ? ` · ${distance}` : ""}
+                  </Typography>
+                  <span
+                    className={`text-xs font-bold px-3 py-1 rounded-full border flex-shrink-0 self-start sm:self-center ${status.className}`}
+                  >
+                    {status.label}
+                  </span>
+                </Box>
+              );
+            })}
+          </Box>
+        </>
+      ) : null}
+
       <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-        Solicitudes recientes
+        {coords ? "Todas tus solicitudes (por proximidad)" : "Solicitudes recientes"}
       </Typography>
       {error ? (
         <Alert severity="error" className="mb-4">
@@ -160,6 +260,7 @@ export default function WorkerDashboard() {
         ) : null}
         {orderedRequests.map((request, index) => {
           const status = getServiceStatus(request.status);
+          const distance = formatDistanceKm(request.distance_km);
           return (
             <Box
               component="button"
@@ -172,6 +273,7 @@ export default function WorkerDashboard() {
             >
               <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
                 Cliente #{request.user_id} — {request.description}
+                {distance ? ` · ${distance}` : ""}
               </Typography>
               <span
                 className={`text-xs font-bold px-3 py-1 rounded-full border flex-shrink-0 self-start sm:self-center ${status.className}`}

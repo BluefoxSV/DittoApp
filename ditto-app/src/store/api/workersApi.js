@@ -3,7 +3,14 @@ import { apiSlice } from "./apiSlice";
 export const workersApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getWorkers: builder.query({
-      query: () => "/workers",
+      query: ({ lat, lng, radiusKm } = {}) => {
+        const params = new URLSearchParams();
+        if (lat != null) params.set("lat", String(lat));
+        if (lng != null) params.set("lng", String(lng));
+        if (radiusKm != null) params.set("radius_km", String(radiusKm));
+        const query = params.toString();
+        return query ? `/workers?${query}` : "/workers";
+      },
       providesTags: ["Worker"],
     }),
     getWorkerProfileByUserId: builder.query({
@@ -18,6 +25,14 @@ export const workersApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["Worker"],
     }),
+    updateWorkerLocation: builder.mutation({
+      query: ({ workerId, latitude, longitude }) => ({
+        url: `/workers/${workerId}/location`,
+        method: "PATCH",
+        body: { latitude, longitude },
+      }),
+      invalidatesTags: ["Worker"],
+    }),
   }),
 });
 
@@ -25,4 +40,5 @@ export const {
   useGetWorkersQuery,
   useGetWorkerProfileByUserIdQuery,
   useCreateWorkerProfileMutation,
+  useUpdateWorkerLocationMutation,
 } = workersApi;

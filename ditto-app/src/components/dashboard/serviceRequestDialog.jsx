@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Alert,
   Box,
@@ -7,18 +8,30 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
+  TextField,
   Typography,
 } from "@mui/material";
 
-import { useUpdateServiceRequestStatusMutation } from "../../store/api/serviceRequestsApi";
+import {
+  useReassignServiceRequestMutation,
+  useUpdateServiceRequestStatusMutation,
+} from "../../store/api/serviceRequestsApi";
+import { useGetWorkersQuery } from "../../store/api/workersApi";
+import { formatDistanceKm } from "../../utils/distance";
 import ServiceChatPanel from "./serviceChatPanel";
 import {
   formatServiceDate,
   getApiErrorMessage,
   getServiceStatus,
+  isChatEnabled,
 } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
+
+function workerLabel(worker) {
+  return worker?.bio?.trim() || `Profesional #${worker?.id ?? ""}`;
+}
 
 export default function ServiceRequestDialog({
   open,
@@ -30,16 +43,33 @@ export default function ServiceRequestDialog({
   isWorker = false,
 }) {
   const [updateStatus, { isLoading, error }] = useUpdateServiceRequestStatusMutation();
+  const [reassignRequest, { isLoading: isReassigning, error: reassignError }] =
+    useReassignServiceRequestMutation();
+  const { data: workers = [] } = useGetWorkersQuery(undefined, { skip: isWorker });
+  const [newWorkerId, setNewWorkerId] = useState("");
 
   if (!request) return null;
 
   const status = getServiceStatus(request.status);
-  const chatEnabled =
-    Boolean(otherUserId) && ["in_progress", "completed"].includes(request.status);
+  const chatEnabled = Boolean(otherUserId) && isChatEnabled(request.status);
+  const distanceLabel = formatDistanceKm(request.distance_km);
 
   const changeStatus = async (nextStatus) => {
     try {
       await updateStatus({ requestId: request.id, status: nextStatus }).unwrap();
+    } catch {
+      // El error se muestra dentro del diálogo.
+    }
+  };
+
+  const handleReassign = async () => {
+    if (!newWorkerId) return;
+    try {
+      await reassignRequest({
+        requestId: request.id,
+        workerId: Number(newWorkerId),
+      }).unwrap();
+      setNewWorkerId("");
     } catch {
       // El error se muestra dentro del diálogo.
     }
@@ -62,6 +92,11 @@ export default function ServiceRequestDialog({
             <Typography sx={FONT} className="text-lg font-bold text-gray-900 truncate mt-0.5">
               {counterpartLabel}
             </Typography>
+            {distanceLabel ? (
+              <Typography sx={FONT} className="text-xs text-gray-500 mt-1">
+                A {distanceLabel} de tu ubicación
+              </Typography>
+            ) : null}
           </Box>
           <Box className="flex items-center gap-2">
             <span className={`text-xs font-bold px-3 py-1 rounded-full border ${status.className}`}>
@@ -77,15 +112,25 @@ export default function ServiceRequestDialog({
       <DialogContent sx={{ p: 0 }}>
         <Box className="grid grid-cols-1 md:grid-cols-[0.9fr_1.1fr] min-h-[520px]">
           <Box className="p-5 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
-            <Typography sx={{...FONT, color: "#676767"}} className="text-xs font-bold  uppercase tracking-wide">
+            {!isWorker && request.status === "rejected" ? (
+              <Alert severity="warning" className="mb-4">
+                El trabajador rechazó esta solicitud. Puedes chatear para coordinar, elegir otro
+                profesional o cancelar la solicitud.
+              </Alert>
+            ) : null}
+
+            <Typography sx={{ ...FONT, color: "#676767" }} className="text-xs font-bold uppercase tracking-wide">
               Descripción
             </Typography>
-            <Typography sx={{...FONT, color: "#676767"}} className="text-sm  leading-relaxed mt-2 whitespace-pre-wrap">
+            <Typography
+              sx={{ ...FONT, color: "#676767" }}
+              className="text-sm leading-relaxed mt-2 whitespace-pre-wrap"
+            >
               {request.description}
             </Typography>
 
             <Box className="mt-5 rounded-2xl bg-primary-50 border border-primary-200 p-4">
-              <Typography sx={{...FONT, color: "#676767"}} className="text-xs text-gray-500">
+              <Typography sx={{ ...FONT, color: "#676767" }} className="text-xs text-gray-500">
                 Fecha de solicitud
               </Typography>
               <Typography sx={FONT} className="text-sm font-bold text-gray-900 mt-1">
@@ -98,15 +143,20 @@ export default function ServiceRequestDialog({
                 {getApiErrorMessage(error, "No se pudo actualizar la solicitud.")}
               </Alert>
             ) : null}
+            {reassignError ? (
+              <Alert severity="error" className="mt-4">
+                {getApiErrorMessage(reassignError, "No se pudo reasignar la solicitud.")}
+              </Alert>
+            ) : null}
 
-            <Box className="mt-auto pt-6">
+            <Box className="mt-auto pt-6 flex flex-col gap-3">
               {isWorker && request.status === "pending" ? (
                 <Box className="grid grid-cols-2 gap-3">
                   <Button
                     variant="outlined"
                     disabled={isLoading}
-                    onClick={() => changeStatus("cancelled")}
-                    sx={{ ...FONT, borderRadius: 3, color: "#6b7280", borderColor: "#d1d5db" }}
+                    onClick={() => changeStatus("rejected")}
+                    sx={{ ...FONT, borderRadius: 3, color: "#c2410c", borderColor: "#fdba74" }}
                   >
                     Rechazar
                   </Button>
@@ -142,7 +192,44 @@ export default function ServiceRequestDialog({
                 </Box>
               ) : null}
 
-              {!isWorker && ["pending", "in_progress"].includes(request.status) ? (
+              {!isWorker && request.status === "rejected" ? (
+                <Box className="flex flex-col gap-3">
+                  <TextField
+                    select
+                    size="small"
+                    label="Elegir otro trabajador"
+                    value={newWorkerId}
+                    onChange={(event) => setNewWorkerId(event.target.value)}
+                    fullWidth
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3, ...FONT } }}
+                  >
+                    {workers
+                      .filter((worker) => worker.id !== request.worker_id)
+                      .map((worker) => (
+                        <MenuItem key={worker.id} value={String(worker.id)}>
+                          {workerLabel(worker)}
+                          {worker.distance_km != null
+                            ? ` · ${formatDistanceKm(worker.distance_km)}`
+                            : ""}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                  <Button
+                    variant="contained"
+                    disabled={!newWorkerId || isReassigning}
+                    onClick={handleReassign}
+                    sx={{ ...FONT, borderRadius: 3, bgcolor: "#BB6AF0", "&:hover": { bgcolor: "#a855df" } }}
+                  >
+                    {isReassigning ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      "Reenviar a otro trabajador"
+                    )}
+                  </Button>
+                </Box>
+              ) : null}
+
+              {!isWorker && ["pending", "rejected", "in_progress"].includes(request.status) ? (
                 <Button
                   variant="outlined"
                   fullWidth
@@ -162,6 +249,7 @@ export default function ServiceRequestDialog({
               otherUserId={otherUserId}
               title={counterpartLabel}
               enabled={chatEnabled}
+              requestStatus={request.status}
             />
           </Box>
         </Box>

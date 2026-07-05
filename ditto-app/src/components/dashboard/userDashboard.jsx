@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -10,11 +10,14 @@ import {
 } from "@mui/material";
 
 import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { useGeolocation } from "../../hooks/useGeolocation";
 import {
   useCreateServiceRequestMutation,
   useGetUserServiceRequestsQuery,
 } from "../../store/api/serviceRequestsApi";
 import { useGetWorkersQuery } from "../../store/api/workersApi";
+import { useUpdateUserLocationMutation } from "../../store/api/usersApi";
+import { formatDistanceKm } from "../../utils/distance";
 import ServiceRequestDialog from "./serviceRequestDialog";
 import {
   formatServiceDate,
@@ -59,11 +62,23 @@ export default function UserDashboard() {
   const [selectedWorkerId, setSelectedWorkerId] = useState(null);
   const [dialogRequestId, setDialogRequestId] = useState(null);
 
+  const { coords, error: geoError, isLoading: isLoadingGeo, refresh: refreshGeo } =
+    useGeolocation();
+  const [updateUserLocation] = useUpdateUserLocationMutation();
+
+  const workerQueryArgs = useMemo(
+    () =>
+      coords
+        ? { lat: coords.latitude, lng: coords.longitude, radiusKm: 100 }
+        : {},
+    [coords],
+  );
+
   const {
     data: workers = [],
     isLoading: isLoadingWorkers,
     error: workersError,
-  } = useGetWorkersQuery();
+  } = useGetWorkersQuery(workerQueryArgs);
   const {
     data: requests = [],
     isLoading: isLoadingRequests,
@@ -75,11 +90,20 @@ export default function UserDashboard() {
   const [createRequest, { isLoading: isCreating, error: createError }] =
     useCreateServiceRequestMutation();
 
+  useEffect(() => {
+    if (!userId || !coords) return;
+    updateUserLocation({
+      userId,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+    });
+  }, [userId, coords, updateUserLocation]);
+
   const workersById = useMemo(
     () => new Map(workers.map((worker) => [worker.id, worker])),
     [workers],
   );
-  const suggestions = workers.slice(0, 3);
+  const suggestions = workers.slice(0, 6);
   const orderedRequests = useMemo(
     () => [...requests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
     [requests],
@@ -100,6 +124,8 @@ export default function UserDashboard() {
         userId,
         workerId: selectedWorkerId,
         description: cleanDescription,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
       }).unwrap();
       setDescription("");
       setDialogRequestId(request.id);
@@ -121,9 +147,31 @@ export default function UserDashboard() {
       sx={{ ...FONT, bgcolor: "#FCFCF5", color: "#1a1a1a", minHeight: "100%" }}
       className="p-4 md:p-8 min-w-0 w-full text-left"
     >
-      <Typography sx={FONT} className="text-2xl font-bold text-gray-900 mb-6">
-        Hola, {firstName} — ¿qué necesitas resolver hoy?
-      </Typography>
+      <Box className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
+          Hola, {firstName} — ¿qué necesitas resolver hoy?
+        </Typography>
+        <Box className="flex items-center gap-2">
+          {isLoadingGeo ? (
+            <CircularProgress size={16} />
+          ) : coords ? (
+            <Typography sx={FONT} className="text-xs text-emerald-700 font-semibold">
+              <i className="ti ti-map-pin mr-1" aria-hidden="true" />
+              Ubicación activa
+            </Typography>
+          ) : (
+            <Button size="small" onClick={refreshGeo} sx={{ ...FONT, textTransform: "none" }}>
+              Activar ubicación
+            </Button>
+          )}
+        </Box>
+      </Box>
+
+      {geoError ? (
+        <Alert severity="info" className="mb-4">
+          Activa la ubicación para ver trabajadores más cercanos. {geoError}
+        </Alert>
+      ) : null}
 
       <Box
         component="form"
@@ -131,7 +179,7 @@ export default function UserDashboard() {
         className="bg-primary-500 rounded-2xl p-5 mb-8"
       >
         <Typography sx={FONT} className="text-white text-sm font-medium mb-3">
-          Escribe tu necesidad y elige un trabajador verificado
+          Escribe tu necesidad y elige un trabajador {coords ? "cercano" : "verificado"}
         </Typography>
         <Box className="bg-paper rounded-xl px-3 flex items-center gap-2">
           <i className="ti ti-search text-gray-900 flex-shrink-0 text-lg" aria-hidden="true" />
@@ -160,7 +208,7 @@ export default function UserDashboard() {
               <CircularProgress size={18} />
             ) : (
               <>
-                <span className="hidden sm:inline" >Solicitar</span>
+                <span className="hidden sm:inline">Solicitar</span>
                 <i className="ti ti-send sm:hidden" aria-hidden="true" />
               </>
             )}
@@ -174,7 +222,7 @@ export default function UserDashboard() {
       </Box>
 
       <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-        Sugerencias de la IA
+        {coords ? "Trabajadores más cercanos" : "Trabajadores disponibles"}
       </Typography>
       {workersError ? (
         <Alert severity="error" className="mb-4">
@@ -187,8 +235,14 @@ export default function UserDashboard() {
             <CircularProgress size={28} />
           </Box>
         ) : null}
+        {!isLoadingWorkers && suggestions.length === 0 ? (
+          <Typography sx={FONT} className="text-sm text-gray-500 col-span-full">
+            No hay trabajadores con ubicación registrada cerca de ti.
+          </Typography>
+        ) : null}
         {suggestions.map((worker, index) => {
           const selected = selectedWorkerId === worker.id;
+          const distance = formatDistanceKm(worker.distance_km);
           return (
             <Box
               component="button"
@@ -210,6 +264,7 @@ export default function UserDashboard() {
               </Typography>
               <Typography sx={FONT} className="text-sm font-semibold text-primary-700 mt-1">
                 {worker.is_verified ? "Trabajador verificado" : "Perfil disponible"}
+                {distance ? ` · ${distance}` : ""}
                 {selected ? " · Seleccionado" : ""}
               </Typography>
             </Box>

@@ -18,8 +18,21 @@ export const usersApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["User"],
     }),
+    updateUserLocation: builder.mutation({
+      query: ({ userId, latitude, longitude }) => ({
+        url: `/users/${userId}/location`,
+        method: "PATCH",
+        body: { latitude, longitude },
+      }),
+      invalidatesTags: ["User"],
+    }),
   }),
 });
 
-export const { useGetMeQuery, useLazyGetMeQuery, useGetUserProfileQuery, useCreateProfileMutation } =
-  usersApi;
+export const {
+  useGetMeQuery,
+  useLazyGetMeQuery,
+  useGetUserProfileQuery,
+  useCreateProfileMutation,
+  useUpdateUserLocationMutation,
+} = usersApi;

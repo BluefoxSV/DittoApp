@@ -11,6 +11,7 @@ export default function ServiceChatPanel({
   otherUserId,
   title,
   enabled,
+  requestStatus,
 }) {
   const [message, setMessage] = useState("");
   const endRef = useRef(null);
@@ -51,14 +52,16 @@ export default function ServiceChatPanel({
     return (
       <Box className="h-full flex items-center justify-center p-8 text-center bg-gray-50">
         <Box>
-          <Box className="w-12 h-12 rounded-2xl bg-primary-50 text-primary-700 flex items-center justify-center mx-auto mb-4">
-            <i className="ti ti-message-circle text-2xl" aria-hidden="true" />
+          <Box className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-500 flex items-center justify-center mx-auto mb-4">
+            <i className="ti ti-message-off text-2xl" aria-hidden="true" />
           </Box>
           <Typography sx={FONT} className="font-bold text-gray-900">
-            Chat disponible al aceptar
+            Chat no disponible
           </Typography>
           <Typography sx={FONT} className="text-sm text-gray-600 mt-2 max-w-xs">
-            La conversación se habilita cuando la solicitud pasa a “En progreso”.
+            {requestStatus === "cancelled"
+              ? "La conversación se cerró porque la solicitud fue cancelada."
+              : "No hay contraparte disponible para chatear."}
           </Typography>
         </Box>
       </Box>
@@ -73,7 +76,11 @@ export default function ServiceChatPanel({
             {title}
           </Typography>
           <Typography sx={FONT} className="text-xs text-emerald-700 font-semibold mt-0.5">
-            Conversación del servicio
+            {requestStatus === "pending"
+              ? "Coordinación antes de aceptar"
+              : requestStatus === "rejected"
+                ? "Conversación tras el rechazo"
+                : "Conversación del servicio"}
           </Typography>
         </Box>
         {isFetching && !isLoading ? <CircularProgress size={16} /> : null}

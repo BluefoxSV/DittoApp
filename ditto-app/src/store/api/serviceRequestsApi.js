@@ -13,7 +13,14 @@ export const serviceRequestsApi = apiSlice.injectEndpoints({
           : [{ type: "ServiceRequest", id: "USER_LIST" }],
     }),
     getWorkerServiceRequests: builder.query({
-      query: (workerId) => `/service-requests/workers/${workerId}`,
+      query: ({ workerId, lat, lng } = {}) => {
+        const params = new URLSearchParams();
+        if (lat != null) params.set("lat", String(lat));
+        if (lng != null) params.set("lng", String(lng));
+        const query = params.toString();
+        const base = `/service-requests/workers/${workerId}`;
+        return query ? `${base}?${query}` : base;
+      },
       providesTags: (result) =>
         result
           ? [
@@ -22,15 +29,32 @@ export const serviceRequestsApi = apiSlice.injectEndpoints({
             ]
           : [{ type: "ServiceRequest", id: "WORKER_LIST" }],
     }),
+    getNearbyServiceRequests: builder.query({
+      query: ({ lat, lng, radiusKm = 50 } = {}) => {
+        const params = new URLSearchParams({
+          lat: String(lat),
+          lng: String(lng),
+          radius_km: String(radiusKm),
+        });
+        return `/service-requests/nearby?${params.toString()}`;
+      },
+      providesTags: [{ type: "ServiceRequest", id: "NEARBY" }],
+    }),
     createServiceRequest: builder.mutation({
-      query: ({ userId, workerId, description }) => ({
+      query: ({ userId, workerId, description, latitude, longitude }) => ({
         url: `/service-requests/users/${userId}`,
         method: "POST",
-        body: { worker_id: workerId, description },
+        body: {
+          worker_id: workerId,
+          description,
+          latitude,
+          longitude,
+        },
       }),
       invalidatesTags: [
         { type: "ServiceRequest", id: "USER_LIST" },
         { type: "ServiceRequest", id: "WORKER_LIST" },
+        { type: "ServiceRequest", id: "NEARBY" },
       ],
     }),
     updateServiceRequestStatus: builder.mutation({
@@ -43,6 +67,20 @@ export const serviceRequestsApi = apiSlice.injectEndpoints({
         { type: "ServiceRequest", id: requestId },
         { type: "ServiceRequest", id: "USER_LIST" },
         { type: "ServiceRequest", id: "WORKER_LIST" },
+        { type: "ServiceRequest", id: "NEARBY" },
+      ],
+    }),
+    reassignServiceRequest: builder.mutation({
+      query: ({ requestId, workerId }) => ({
+        url: `/service-requests/${requestId}`,
+        method: "PATCH",
+        body: { worker_id: workerId },
+      }),
+      invalidatesTags: (_result, _error, { requestId }) => [
+        { type: "ServiceRequest", id: requestId },
+        { type: "ServiceRequest", id: "USER_LIST" },
+        { type: "ServiceRequest", id: "WORKER_LIST" },
+        { type: "ServiceRequest", id: "NEARBY" },
       ],
     }),
   }),
@@ -51,6 +89,8 @@ export const serviceRequestsApi = apiSlice.injectEndpoints({
 export const {
   useGetUserServiceRequestsQuery,
   useGetWorkerServiceRequestsQuery,
+  useGetNearbyServiceRequestsQuery,
   useCreateServiceRequestMutation,
   useUpdateServiceRequestStatusMutation,
+  useReassignServiceRequestMutation,
 } = serviceRequestsApi;
