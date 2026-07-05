@@ -31,7 +31,11 @@ import {
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
 function workerLabel(worker) {
-  return worker?.bio?.trim() || `Profesional #${worker?.id ?? ""}`;
+  const name = worker?.full_name?.trim();
+  if (name) return name;
+  const trade = worker?.bio?.trim();
+  if (trade) return trade;
+  return `Profesional #${worker?.id ?? ""}`;
 }
 
 export default function ServiceRequestDialog({
