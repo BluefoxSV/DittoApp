@@ -312,7 +312,6 @@ export default function RegisterForm() {
       lastName: BadgeRoundedIcon,
       birthDate: CalendarMonthRoundedIcon,
       address: HomeRoundedIcon,
-      state: HomeRoundedIcon,
 
     };
 
