@@ -18,14 +18,14 @@ import {
   useRepublishServiceRequestMutation,
   useUpdateServiceRequestStatusMutation,
 } from "../../store/api/serviceRequestsApi";
-import { useGetWorkersQuery, useGetWorkerQuery } from "../../store/api/workersApi";
+import { useGetWorkersQuery } from "../../store/api/workersApi";
 import { formatDistanceKm } from "../../utils/distance";
 import ServiceChatPanel from "./serviceChatPanel";
 import {
   formatServiceDate,
   getApiErrorMessage,
   getServiceStatus,
-  isChatEnabled,
+  canShowRequestChat,
 } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
@@ -39,7 +39,6 @@ export default function ServiceRequestDialog({
   onClose,
   request,
   currentUserId,
-  otherUserId: otherUserIdProp,
   counterpartLabel,
   isWorker = false,
   workerId = null,
@@ -50,18 +49,14 @@ export default function ServiceRequestDialog({
   const [republishRequest, { isLoading: isRepublishing, error: republishError }] =
     useRepublishServiceRequestMutation();
   const { data: workers = [] } = useGetWorkersQuery(undefined, { skip: isWorker });
-  const { data: assignedWorker } = useGetWorkerQuery(request?.worker_id, {
-    skip: isWorker || !request?.worker_id,
-  });
   const [newWorkerId, setNewWorkerId] = useState("");
 
   if (!request) return null;
 
   const status = getServiceStatus(request.status);
-  const otherUserId = otherUserIdProp ?? assignedWorker?.user_id ?? null;
-  const chatEnabled = Boolean(otherUserId) && isChatEnabled(request.status);
-  const distanceLabel = formatDistanceKm(request.distance_km);
   const isOpenFeedItem = !request.worker_id;
+  const chatEnabled = canShowRequestChat(request);
+  const distanceLabel = formatDistanceKm(request.distance_km);
   const isAssignedToMe = isWorker && request.worker_id === workerId;
   const canClaimFromFeed = isWorker && isOpenFeedItem && request.status === "pending";
   const canRespondAsAssignee = isWorker && isAssignedToMe && request.status === "pending";
@@ -311,7 +306,6 @@ export default function ServiceRequestDialog({
               title={counterpartLabel}
               enabled={chatEnabled}
               requestStatus={request.status}
-              waitingForWorker={!isWorker && isOpenFeedItem && request.status === "pending"}
             />
           </Box>
         </Box>

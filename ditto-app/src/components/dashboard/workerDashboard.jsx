@@ -349,7 +349,6 @@ export default function WorkerDashboard() {
         onClose={() => setDialogRequestId(null)}
         request={dialogRequest}
         currentUserId={user.id}
-        otherUserId={dialogRequest?.user_id}
         counterpartLabel={`Cliente #${dialogRequest?.user_id ?? ""}`}
         isWorker
         workerId={workerId}

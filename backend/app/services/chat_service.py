@@ -11,6 +11,11 @@ from app.services.user_service import get_user_by_id
 from app.services.worker_service import get_worker_profile
 
 
+def _status_is(status, expected: ServiceRequestStatus) -> bool:
+    value = status.value if isinstance(status, ServiceRequestStatus) else str(status)
+    return value == expected.value
+
+
 async def _is_assigned_worker(request: ServiceRequest, user_id: int) -> bool:
     if not request.worker_id:
         return False
@@ -20,7 +25,9 @@ async def _is_assigned_worker(request: ServiceRequest, user_id: int) -> bool:
 
 async def _is_feed_worker(user_id: int) -> bool:
     user = await get_user_by_id(user_id)
-    return user.role == UserRole.WORKER and await WorkerProfile.filter(user_id=user_id).exists()
+    if user.role != UserRole.WORKER:
+        return False
+    return await WorkerProfile.filter(user_id=user_id).exists()
 
 
 async def _ensure_request_participant(request: ServiceRequest, user_id: int) -> None:
@@ -28,7 +35,7 @@ async def _ensure_request_participant(request: ServiceRequest, user_id: int) -> 
     is_assigned = await _is_assigned_worker(request, user_id)
     is_open_feed_worker = (
         not request.worker_id
-        and request.status == ServiceRequestStatus.PENDING
+        and _status_is(request.status, ServiceRequestStatus.PENDING)
         and await _is_feed_worker(user_id)
     )
     if not (is_owner or is_assigned or is_open_feed_worker):
@@ -37,18 +44,26 @@ async def _ensure_request_participant(request: ServiceRequest, user_id: int) -> 
 
 async def _resolve_receiver_id(request: ServiceRequest, sender_id: int) -> int:
     if request.user_id == sender_id:
-        if not request.worker_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Aún no hay trabajador asignado para chatear",
-            )
-        worker = await get_worker_profile(request.worker_id)
-        return worker.user_id
+        if request.worker_id:
+            worker = await get_worker_profile(request.worker_id)
+            return worker.user_id
+        last_incoming = (
+            await ChatMessage.filter(service_request_id=request.id)
+            .exclude(sender_id=sender_id)
+            .order_by("-created_at")
+            .first()
+        )
+        if last_incoming:
+            return last_incoming.sender_id
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Aún no hay mensajes de trabajadores para responder",
+        )
     if await _is_assigned_worker(request, sender_id):
         return request.user_id
     if (
         not request.worker_id
-        and request.status == ServiceRequestStatus.PENDING
+        and _status_is(request.status, ServiceRequestStatus.PENDING)
         and await _is_feed_worker(sender_id)
     ):
         return request.user_id
@@ -88,7 +103,7 @@ async def send_request_message(request_id: int, sender_id: int, content: str) ->
     return await ChatMessage.create(
         sender=sender,
         receiver=receiver,
-        service_request=request,
+        service_request_id=request.id,
         content=content,
     )
 

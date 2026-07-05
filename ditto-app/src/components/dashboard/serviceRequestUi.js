@@ -25,6 +25,10 @@ export function isChatEnabled(status) {
   return ["pending", "rejected", "in_progress", "completed"].includes(status);
 }
 
+export function canShowRequestChat(request) {
+  return Boolean(request?.id) && isChatEnabled(request.status);
+}
+
 export function getServiceStatus(status) {
   return SERVICE_STATUS[status] ?? {
     label: status,

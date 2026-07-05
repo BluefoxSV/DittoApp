@@ -237,7 +237,6 @@ export default function UserDashboard() {
         onClose={() => setDialogRequestId(null)}
         request={dialogRequest}
         currentUserId={userId}
-        otherUserId={null}
         counterpartLabel={requestTitle(dialogRequest)}
       />
     </Box>
