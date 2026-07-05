@@ -94,7 +94,7 @@ export default function WorkerDashboard() {
     >
       <Box className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
         <Box>
-          <Typography sx={FONT} className="text-sm text-gray-600">
+          <Typography sx={FONT} className="text-sm text-gray-700">
             Hola,
           </Typography>
           <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
@@ -127,7 +127,7 @@ export default function WorkerDashboard() {
             <Typography
               sx={FONT}
               className={`text-sm font-medium mb-1 truncate ${
-                primary ? "text-primary-700" : "text-gray-600"
+                primary ? "text-primary-700" : "text-gray-900"
               }`}
             >
               {label}
@@ -154,7 +154,7 @@ export default function WorkerDashboard() {
           </Box>
         ) : null}
         {!isLoading && orderedRequests.length === 0 ? (
-          <Typography sx={FONT} className="text-sm text-gray-500 p-5">
+          <Typography sx={FONT} className="text-sm text-gray-700 p-5">
             Aún no tienes solicitudes de servicio.
           </Typography>
         ) : null}

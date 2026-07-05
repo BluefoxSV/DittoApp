@@ -134,7 +134,7 @@ export default function UserDashboard() {
           Escribe tu necesidad y elige un trabajador verificado
         </Typography>
         <Box className="bg-paper rounded-xl px-3 flex items-center gap-2">
-          <i className="ti ti-search text-primary-400 flex-shrink-0 text-lg" aria-hidden="true" />
+          <i className="ti ti-search text-gray-900 flex-shrink-0 text-lg" aria-hidden="true" />
           <TextField
             value={description}
             onChange={(event) => setDescription(event.target.value)}
@@ -232,7 +232,7 @@ export default function UserDashboard() {
           </Box>
         ) : null}
         {!isLoadingRequests && orderedRequests.length === 0 ? (
-          <Typography sx={FONT} className="text-sm text-gray-500 p-5">
+          <Typography sx={FONT} className="text-sm text-gray-900 p-5">
             Aún no tienes solicitudes de servicio.
           </Typography>
         ) : null}
@@ -253,7 +253,7 @@ export default function UserDashboard() {
                 <Typography sx={FONT} className="text-base font-bold text-gray-900 truncate">
                   {workerLabel(worker)} — {request.description}
                 </Typography>
-                <Typography sx={FONT} className="text-sm text-[#fffff] mt-1">
+                <Typography sx={FONT} className="text-sm text-gray-700 mt-1">
                   {formatServiceDate(request.created_at)}
                 </Typography>
               </Box>

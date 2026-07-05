@@ -62,6 +62,10 @@ const BASE_COLORS = {
     gray: generateScale(BASE_COLORS.gray),
     paper: BASE_COLORS.paper, // blanco no necesita escala, es plano
   };
+
+  colors.gray[700] = "#4a4550";
+  colors.gray[800] = "#2e2b33";
+  colors.gray[900] = "#1a1a1a";
   
   module.exports = {
     content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
