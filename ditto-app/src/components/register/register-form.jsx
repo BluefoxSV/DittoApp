@@ -18,6 +18,11 @@ import {
 } from "@mui/material";
 
 import logo from "../../assets/icon-192.png";
+import {
+  getProfessionLabel,
+  isValidProfession,
+  WORK_PROFESSIONS,
+} from "../../constants/workProfessions";
 import { getFieldsByRole, ROLES } from "../../pages/profile/Profile.jsx";
 import { useLoginMutation, useRegisterMutation } from "../../store/api/authApi";
 import { useLazyGetMeQuery, useCreateProfileMutation } from "../../store/api/usersApi";
@@ -54,8 +59,12 @@ const PHONE_FIELD = {
   autoComplete: "tel",
 };
 
-const WORKER_FIELD_MAP = {
-  specializationArea: "bio",
+const PROFESSION_FIELD_KEY = "specializationArea";
+
+const BASE_PROFILE_KEYS = new Set(["name", "birthDate", "address", "state", "country"]);
+const WORKER_EXTRA_KEYS = new Set(["experience", "academicStudies", "completedCourses"]);
+
+const OTHER_WORKER_FIELD_MAP = {
   experience: "experience",
   academicStudies: "academic_history",
 };
@@ -103,7 +112,34 @@ export default function RegisterForm() {
   const isLoading =
     isRegistering || isLoggingIn || isCreatingProfile || isCreatingWorkerProfile;
 
-  const profileFields = getFieldsByRole(form.role);
+  const allProfileFields = getFieldsByRole(form.role);
+  const baseProfileFields = allProfileFields.filter(({ key }) => BASE_PROFILE_KEYS.has(key));
+  const workerExtraFields = allProfileFields.filter(({ key }) => WORKER_EXTRA_KEYS.has(key));
+  const isWorker = form.role === ROLES.WORKER;
+
+  const renderProfileField = ({
+    key,
+    label,
+    multiline,
+    rows,
+    type = "text",
+    InputLabelProps,
+  }) => (
+    <TextField
+      key={key}
+      fullWidth
+      id={key}
+      label={label}
+      type={type}
+      value={form[key] ?? ""}
+      onChange={handleChange(key)}
+      margin="normal"
+      multiline={multiline}
+      rows={rows}
+      InputLabelProps={InputLabelProps}
+      required={key === "name"}
+    />
+  );
 
   const handleRoleChange = (event) => {
     const role = event.target.value;
@@ -139,6 +175,11 @@ export default function RegisterForm() {
       return;
     }
 
+    if (form.role === ROLES.WORKER && !isValidProfession(form.specializationArea)) {
+      setError("Debes seleccionar una profesión de la lista.");
+      return;
+    }
+
     try {
       const user = await register({
         email: form.email,
@@ -156,15 +197,16 @@ export default function RegisterForm() {
       }).unwrap();
 
       if (form.role === ROLES.WORKER) {
-        const workerData = {};
-        for (const [formKey, apiKey] of Object.entries(WORKER_FIELD_MAP)) {
+        const workerData = {
+          bio: getProfessionLabel(form.specializationArea),
+        };
+
+        for (const [formKey, apiKey] of Object.entries(OTHER_WORKER_FIELD_MAP)) {
           const value = form[formKey]?.trim();
           if (value) workerData[apiKey] = value;
         }
 
-        if (Object.keys(workerData).length > 0) {
-          await createWorkerProfile({ userId: user.id, ...workerData }).unwrap();
-        }
+        await createWorkerProfile({ userId: user.id, ...workerData }).unwrap();
       }
 
       const me = await fetchMe().unwrap();
@@ -294,24 +336,31 @@ export default function RegisterForm() {
                     Información personal
                   </Typography>
 
-                  {profileFields.map(
-                    ({ key, label, multiline, rows, type = "text", InputLabelProps }) => (
-                      <TextField
-                        key={key}
-                        fullWidth
-                        id={key}
-                        label={label}
-                        type={type}
-                        value={form[key] ?? ""}
-                        onChange={handleChange(key)}
-                        margin="normal"
-                        multiline={multiline}
-                        rows={rows}
-                        InputLabelProps={InputLabelProps}
-                        required={key === "name"}
-                      />
-                    ),
+                  {baseProfileFields.map(renderProfileField)}
+
+                  {isWorker && (
+                    <FormControl fullWidth margin="normal" required>
+                      <InputLabel id="profession-label">Profesión</InputLabel>
+                      <Select
+                        labelId="profession-label"
+                        id={PROFESSION_FIELD_KEY}
+                        value={form.specializationArea}
+                        label="Profesión"
+                        onChange={handleChange(PROFESSION_FIELD_KEY)}
+                      >
+                        <MenuItem value="" disabled>
+                          Selecciona una profesión
+                        </MenuItem>
+                        {WORK_PROFESSIONS.map(({ value, label }) => (
+                          <MenuItem key={value} value={value}>
+                            {label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   )}
+
+                  {workerExtraFields.map(renderProfileField)}
 
                   <TextField
                     fullWidth
