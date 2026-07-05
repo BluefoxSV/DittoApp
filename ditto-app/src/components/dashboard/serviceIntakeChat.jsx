@@ -24,12 +24,31 @@ const DITTOAPP_SESSION_CONTEXT =
 
 function buildIntakePayload(description) {
   return `[PUBLICAR SOLICITUD EN DITTOAPP]
-El cliente quiere publicar para que un ESPECIALISTA de DittoApp venga en persona. Tu rol es entrevistador, NO técnico.
-
-Prohibido: diagnosticar, consejos, listas de causas, explicar reparaciones.
+El cliente quiere publicar para que un ESPECIALISTA de DittoApp venga en persona. Tu rol es entrevistador, NO técnico. ${DITTOAPP_SESSION_CONTEXT}
 
 Problema del cliente:
 ${description.trim()}`;
+}
+
+function ThinkingIndicator() {
+  return (
+    <Box className="flex justify-start">
+      <Box className="bg-paper border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
+        <Box className="flex gap-1">
+          {[0, 1, 2].map((index) => (
+            <Box
+              key={index}
+              className="w-2 h-2 rounded-full bg-primary-500 animate-bounce"
+              sx={{ animationDelay: `${index * 0.15}s` }}
+            />
+          ))}
+        </Box>
+        <Typography sx={FONT} className="text-xs text-gray-500">
+          Escribiendo...
+        </Typography>
+      </Box>
+    </Box>
+  );
 }
 
 function endConversationSession(endSession) {
@@ -94,6 +113,8 @@ function IntakeChatBody({
   const [draft, setDraft] = useState("");
   const [isConnecting, setIsConnecting] = useState(true);
   const [minFollowUp, setMinFollowUp] = useState(3);
+  const [isAgentTyping, setIsAgentTyping] = useState(false);
+  const [isWaitingForAgent, setIsWaitingForAgent] = useState(false);
   const initialSentRef = useRef(false);
   const streamingIdRef = useRef(null);
   const lastAgentTextRef = useRef("");
@@ -103,11 +124,11 @@ function IntakeChatBody({
 
   const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
 
-  const sendInitialMessage = (sendFn, contextualFn) => {
+  const sendInitialMessage = (sendFn) => {
     if (initialSentRef.current || !initialDescription || typeof sendFn !== "function") {
       return false;
     }
-    contextualFn?.(DITTOAPP_SESSION_CONTEXT);
+    setIsWaitingForAgent(true);
     sendFn(buildIntakePayload(initialDescription));
     initialSentRef.current = true;
     return true;
@@ -133,6 +154,9 @@ function IntakeChatBody({
       const text = extractAgentText(message);
       if (!text) return;
 
+      setIsWaitingForAgent(false);
+      setIsAgentTyping(false);
+
       if (streamingIdRef.current) {
         lastAgentTextRef.current = text;
         setMessages((prev) =>
@@ -150,6 +174,8 @@ function IntakeChatBody({
     },
     onAgentChatResponsePart: (part) => {
       if (part.type === "start") {
+        setIsWaitingForAgent(false);
+        setIsAgentTyping(true);
         streamingIdRef.current = Date.now();
         setMessages((prev) => [
           ...prev,
@@ -173,6 +199,7 @@ function IntakeChatBody({
       }
 
       if (part.type === "stop") {
+        setIsAgentTyping(false);
         setMessages((prev) => {
           const index = prev.findIndex((item) => item.id === streamingIdRef.current);
           if (index === -1) return prev;
@@ -184,6 +211,15 @@ function IntakeChatBody({
         });
         streamingIdRef.current = null;
       }
+    },
+    onAgentTyping: (event) => {
+      const isTyping =
+        event?.is_typing ??
+        event?.agent_typing_event?.is_typing ??
+        event?.isTyping ??
+        false;
+      setIsAgentTyping(Boolean(isTyping));
+      if (isTyping) setIsWaitingForAgent(false);
     },
     onConnect: () => {
       setConnectionError(null);
@@ -208,11 +244,12 @@ function IntakeChatBody({
     conversation;
   const isConnected = status === "connected";
   const canSendMessages = isConnected && !isConnecting;
+  const showThinking = isAgentTyping || isWaitingForAgent || messages.some(({ streaming }) => streaming);
   const followUpCount = useMemo(
     () => Math.max(0, messages.filter(({ role }) => role === "user").length - 1),
     [messages],
   );
-  const canRequestSummary = canSendMessages && followUpCount >= minFollowUp && !finalSummary;
+  const canRequestSummary = followUpCount >= minFollowUp && !finalSummary;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -222,21 +259,32 @@ function IntakeChatBody({
     if (!canSendMessages) return undefined;
 
     const timer = window.setTimeout(() => {
-      sendInitialMessage(sendUserMessage, sendContextualUpdate);
+      sendInitialMessage(sendUserMessage);
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [canSendMessages, initialDescription, sendUserMessage, sendContextualUpdate]);
+  }, [canSendMessages, initialDescription, sendUserMessage]);
+
+  useEffect(() => {
+    if (!isWaitingForAgent) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setIsWaitingForAgent(false);
+      setConnectionError("El asistente tardó demasiado en responder. Intenta enviar otro mensaje.");
+    }, 45000);
+
+    return () => window.clearTimeout(timer);
+  }, [isWaitingForAgent, setConnectionError]);
 
   useEffect(() => {
     if (!canSendMessages || finalSummary || summaryNudgeRef.current) return;
     if (followUpCount < minFollowUp) return;
 
     summaryNudgeRef.current = true;
-    sendUserMessage(
-      "STOP. No des diagnósticos ni consejos técnicos. Eres entrevistador de DittoApp. Llama AHORA a finalizar_solicitud con el resumen para publicar la solicitud y que un especialista vaya al domicilio del cliente.",
+    sendContextualUpdate(
+      "El cliente ya respondió las preguntas mínimas. Llama AHORA a finalizar_solicitud con el parámetro resumen para publicar en DittoApp.",
     );
-  }, [canSendMessages, finalSummary, followUpCount, minFollowUp, sendUserMessage]);
+  }, [canSendMessages, finalSummary, followUpCount, minFollowUp, sendContextualUpdate]);
 
   useEffect(() => {
     if (!isConnecting) return undefined;
@@ -270,12 +318,11 @@ function IntakeChatBody({
           userId: userId ? String(userId) : undefined,
         };
 
-        if (config.prompt_override) {
+        if (config.use_prompt_override !== false && config.prompt_override) {
           sessionOptions.overrides = {
             conversation: { textOnly: true },
             agent: {
               prompt: { prompt: config.prompt_override },
-              firstMessage: config.first_message_override ?? undefined,
               language: "es",
             },
           };
@@ -330,18 +377,21 @@ function IntakeChatBody({
     if (!content || !canSendMessages) return;
 
     setMessages((prev) => [...prev, { role: "user", text: content, id: Date.now() }]);
+    setIsWaitingForAgent(true);
+    setIsAgentTyping(false);
     sendUserMessage(content);
     setDraft("");
   };
 
   const handleRequestSummary = () => {
     if (!canSendMessages) return;
+    setIsWaitingForAgent(true);
     sendUserMessage(
-      "No des consejos ni diagnósticos. Genera el resumen para PUBLICAR la solicitud en DittoApp y llama finalizar_solicitud con el parámetro resumen (problema, ubicación, urgencia, qué debe hacer el especialista on-site).",
+      "Llama la herramienta finalizar_solicitud con el parámetro resumen. Incluye problema, ubicación, urgencia y qué debe hacer el especialista on-site.",
     );
   };
 
-  const handleLocalSummary = () => {
+  const handlePreparePublish = () => {
     setFinalSummary(buildLocalSummary(messages, initialDescription));
   };
 
@@ -410,21 +460,30 @@ function IntakeChatBody({
 
         {canRequestSummary ? (
           <Box className="mx-4 mb-3 flex flex-col gap-2">
+            {canSendMessages ? (
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={handleRequestSummary}
+                disabled={showThinking}
+                sx={{ ...FONT, textTransform: "none", borderRadius: 3 }}
+              >
+                Generar resumen con IA
+              </Button>
+            ) : null}
             <Button
-              variant="outlined"
+              variant="contained"
               fullWidth
-              onClick={handleRequestSummary}
-              sx={{ ...FONT, textTransform: "none", borderRadius: 3 }}
+              onClick={handlePreparePublish}
+              sx={{
+                ...FONT,
+                textTransform: "none",
+                borderRadius: 3,
+                bgcolor: "#874cad",
+                "&:hover": { bgcolor: "#7340a0" },
+              }}
             >
-              Generar resumen con IA
-            </Button>
-            <Button
-              variant="text"
-              fullWidth
-              onClick={handleLocalSummary}
-              sx={{ ...FONT, textTransform: "none", color: "#874cad" }}
-            >
-              Usar conversación como descripción
+              Listo — preparar publicación
             </Button>
           </Box>
         ) : null}
@@ -463,6 +522,8 @@ function IntakeChatBody({
               );
             })}
 
+          {showThinking ? <ThinkingIndicator /> : null}
+
           {isConnecting ? (
             <Typography sx={FONT} className="text-xs text-gray-500 text-center">
               Conectando con el asistente...
@@ -495,14 +556,14 @@ function IntakeChatBody({
               fullWidth
               multiline
               maxRows={4}
-              disabled={!canSendMessages}
+              disabled={!canSendMessages || showThinking}
               inputProps={{ maxLength: 1000, "aria-label": "Respuesta" }}
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3, ...FONT } }}
             />
             <Button
               type="submit"
               variant="contained"
-              disabled={!draft.trim() || !canSendMessages}
+              disabled={!draft.trim() || !canSendMessages || showThinking}
               aria-label="Enviar respuesta"
               sx={{
                 minWidth: 44,
