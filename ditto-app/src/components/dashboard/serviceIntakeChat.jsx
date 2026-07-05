@@ -20,7 +20,17 @@ import { getApiErrorMessage } from "./serviceRequestUi";
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
 const DITTOAPP_SESSION_CONTEXT =
-  "Modo entrevista DittoApp: el cliente PUBLICA una solicitud para que un trabajador especializado vaya a su domicilio. Prohibido diagnosticar, dar tips, listas de causas o soluciones caseras.";
+  "Modo entrevista DittoApp: el cliente PUBLICA una solicitud para que un trabajador especializado vaya a su domicilio. Prohibido diagnosticar, dar tips, listas de causas o soluciones caseras. Cuando ya tengas la info necesaria, termina tu respuesta con exactamente [[DITTO_PUBLICAR]] (sin espacios extra).";
+
+const DITTO_PUBLISH_KEYWORD = "[[DITTO_PUBLICAR]]";
+
+function containsPublishKeyword(text) {
+  return text.includes(DITTO_PUBLISH_KEYWORD);
+}
+
+function stripPublishKeyword(text) {
+  return text.replaceAll(DITTO_PUBLISH_KEYWORD, "").trim();
+}
 
 function buildIntakePayload(description) {
   return description.trim();
@@ -61,38 +71,63 @@ function endConversationSession(endSession) {
   }
 }
 
-function buildLocalSummary(messages, initialDescription) {
-  const userLines = messages
-    .filter(({ role, text }) => role === "user" && text?.trim())
-    .map(({ text }) => text.trim());
-
-  const detailLines = userLines.slice(1);
-  const parts = [
-    `Problema inicial: ${initialDescription.trim()}`,
-  ];
-
-  if (detailLines.length > 0) {
-    parts.push("", "Detalles adicionales del cliente:");
-    detailLines.forEach((line) => parts.push(`- ${line}`));
+function buildGeoSection(coords) {
+  const lat = Number(coords?.latitude);
+  const lng = Number(coords?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return [
+      "",
+      "Ubicación GPS del cliente:",
+      "No disponible. Usa la dirección indicada en la entrevista.",
+    ].join("\n");
   }
 
-  return parts.join("\n");
+  return [
+    "",
+    "Ubicación GPS del cliente:",
+    `Coordenadas: ${lat}, ${lng}`,
+    `Google Maps: https://www.google.com/maps?q=${lat},${lng}`,
+    `Waze: https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+  ].join("\n");
 }
 
-function isAgentReadyToPublish(text) {
-  const normalized = text.toLowerCase();
-  const markers = [
-    "procederé a publicar",
-    "procedere a publicar",
-    "voy a publicar",
-    "publicar la solicitud",
-    "publicaremos",
-    "solicitud quedará publicada",
-    "publicar tu solicitud",
-    "coordinar la visita",
-    "publicación de tu solicitud",
-  ];
-  return markers.some((marker) => normalized.includes(marker));
+function extractInterviewPairs(messages) {
+  const pairs = [];
+  let pendingQuestion = null;
+
+  for (const message of messages) {
+    const text = stripPublishKeyword(message.text ?? "").trim();
+    if (!text) continue;
+
+    if (message.role === "agent") {
+      pendingQuestion = text;
+      continue;
+    }
+
+    if (message.role === "user" && pendingQuestion) {
+      pairs.push({ question: pendingQuestion, answer: text });
+      pendingQuestion = null;
+    }
+  }
+
+  return pairs;
+}
+
+function buildPublishDescription(messages, initialDescription, coords) {
+  const parts = [`Problema inicial: ${initialDescription.trim()}`];
+  const pairs = extractInterviewPairs(messages);
+
+  if (pairs.length > 0) {
+    parts.push("", "Entrevista:");
+    pairs.forEach(({ question, answer }, index) => {
+      parts.push(`P${index + 1}: ${question}`);
+      parts.push(`R${index + 1}: ${answer}`);
+      if (index < pairs.length - 1) parts.push("");
+    });
+  }
+
+  parts.push(buildGeoSection(coords));
+  return parts.join("\n");
 }
 
 function extractAgentText(message) {
@@ -114,12 +149,14 @@ function extractAgentText(message) {
 function IntakeChatBody({
   initialDescription,
   userId,
+  coords,
   onClose,
   onConfirm,
   onFallbackPublish,
   isPublishing,
   finalSummary,
   setFinalSummary,
+  descriptionBuilderRef,
   elevenLabsUnavailable,
   setElevenLabsUnavailable,
   connectionError,
@@ -147,6 +184,17 @@ function IntakeChatBody({
   const initialDescriptionRef = useRef(initialDescription);
 
   const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
+
+  const buildDescription = useCallback(
+    () => buildPublishDescription(messages, initialDescription, coords),
+    [messages, initialDescription, coords],
+  );
+
+  useEffect(() => {
+    if (descriptionBuilderRef) {
+      descriptionBuilderRef.current = buildDescription;
+    }
+  }, [buildDescription, descriptionBuilderRef]);
 
   const trySendInitialMessage = useCallback((attempt = 0) => {
     if (initialSentRef.current || !initialDescriptionRef.current) return;
@@ -180,30 +228,33 @@ function IntakeChatBody({
       if (autoFinalizeRef.current || finalSummary) return;
 
       const cleanText = agentText?.trim();
-      if (!cleanText || !isAgentReadyToPublish(cleanText)) return;
-
-      const answered = Math.max(0, messages.filter(({ role }) => role === "user").length - 1);
-      if (answered < minFollowUp) return;
+      if (!cleanText || !containsPublishKeyword(cleanText)) return;
 
       autoFinalizeRef.current = true;
-      setFinalSummary(buildLocalSummary(messages, initialDescription));
+      setFinalSummary(buildDescription());
     },
-    [finalSummary, initialDescription, messages, minFollowUp, setFinalSummary],
+    [buildDescription, finalSummary, setFinalSummary],
   );
 
   const appendAgentText = (text) => {
-    const cleanText = text.trim();
-    if (!cleanText || cleanText === lastAgentTextRef.current) return;
+    const rawText = text.trim();
+    if (!rawText) return;
 
-    lastAgentTextRef.current = cleanText;
+    const displayText = stripPublishKeyword(rawText);
+    if (!displayText || displayText === lastAgentTextRef.current) {
+      maybeAutoFinalize(rawText);
+      return;
+    }
+
+    lastAgentTextRef.current = displayText;
     setMessages((prev) => {
       const last = prev[prev.length - 1];
       if (last?.role === "agent") {
-        return [...prev.slice(0, -1), { ...last, text: cleanText, streaming: false }];
+        return [...prev.slice(0, -1), { ...last, text: rawText, streaming: false }];
       }
-      return [...prev, { role: "agent", text: cleanText, id: Date.now() }];
+      return [...prev, { role: "agent", text: rawText, id: Date.now() }];
     });
-    maybeAutoFinalize(cleanText);
+    maybeAutoFinalize(rawText);
   };
 
   const conversation = useConversation({
@@ -216,7 +267,7 @@ function IntakeChatBody({
       setIsAgentTyping(false);
 
       if (streamingIdRef.current) {
-        lastAgentTextRef.current = text;
+        lastAgentTextRef.current = text.trim();
         setMessages((prev) =>
           prev.map((item) =>
             item.id === streamingIdRef.current
@@ -225,6 +276,7 @@ function IntakeChatBody({
           ),
         );
         streamingIdRef.current = null;
+        maybeAutoFinalize(text);
         return;
       }
 
@@ -356,7 +408,7 @@ function IntakeChatBody({
 
     summaryNudgeRef.current = true;
     sendContextualUpdate(
-      "El cliente ya respondió las preguntas mínimas. Llama AHORA a finalizar_solicitud con el parámetro resumen para publicar en DittoApp.",
+      `El cliente ya respondió las preguntas mínimas. Resume lo recopilado y termina tu mensaje con exactamente ${DITTO_PUBLISH_KEYWORD} para publicar en DittoApp.`,
     );
   }, [canSendMessages, finalSummary, followUpCount, minFollowUp, sendContextualUpdate]);
 
@@ -463,12 +515,12 @@ function IntakeChatBody({
     if (!canSendMessages) return;
     setIsWaitingForAgent(true);
     sendUserMessage(
-      "Llama la herramienta finalizar_solicitud con el parámetro resumen. Incluye problema, ubicación, urgencia y qué debe hacer el especialista on-site.",
+      `Resume la solicitud y termina tu respuesta con exactamente ${DITTO_PUBLISH_KEYWORD} para publicar en DittoApp.`,
     );
   };
 
   const handlePreparePublish = () => {
-    setFinalSummary(buildLocalSummary(messages, initialDescription));
+    setFinalSummary(buildDescription());
   };
 
   if (elevenLabsUnavailable) {
@@ -606,7 +658,7 @@ function IntakeChatBody({
                         isOwn ? "text-white" : "text-black"
                       }`}
                     >
-                      {item.text || (item.streaming ? "..." : "")}
+                      {stripPublishKeyword(item.text) || (item.streaming ? "..." : "")}
                     </Typography>
                   </Box>
                 </Box>
@@ -701,6 +753,7 @@ export default function ServiceIntakeChat({
   open,
   initialDescription,
   userId,
+  coords,
   onClose,
   onConfirm,
   onFallbackPublish,
@@ -710,8 +763,15 @@ export default function ServiceIntakeChat({
   const [connectionError, setConnectionError] = useState(null);
   const [elevenLabsUnavailable, setElevenLabsUnavailable] = useState(false);
   const autoPublishRef = useRef(false);
+  const descriptionBuilderRef = useRef(null);
 
   const registerSummary = useCallback((resumen) => {
+    const built = descriptionBuilderRef.current?.();
+    if (built) {
+      setFinalSummary(built);
+      return "Resumen registrado. Publicando solicitud en DittoApp.";
+    }
+
     const summary = typeof resumen === "string" ? resumen.trim() : "";
     if (summary) setFinalSummary(summary);
     return "Resumen registrado. Publicando solicitud en DittoApp.";
@@ -767,12 +827,14 @@ export default function ServiceIntakeChat({
             key={initialDescription}
             initialDescription={initialDescription}
             userId={userId}
+            coords={coords}
             onClose={handleClose}
             onConfirm={onConfirm}
             onFallbackPublish={onFallbackPublish}
             isPublishing={isPublishing}
             finalSummary={finalSummary}
             setFinalSummary={setFinalSummary}
+            descriptionBuilderRef={descriptionBuilderRef}
             elevenLabsUnavailable={elevenLabsUnavailable}
             setElevenLabsUnavailable={setElevenLabsUnavailable}
             connectionError={connectionError}
