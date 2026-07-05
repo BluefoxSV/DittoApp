@@ -94,7 +94,7 @@ export default function ServiceChatPanel({
 
         {!isLoading && !conversationError && messages.length === 0 ? (
           <Box className="h-full flex items-center justify-center text-center">
-            <Typography sx={FONT} className="text-sm text-gray-500 max-w-xs">
+            <Typography sx={{...FONT, color: "#676767"}} className="text-sm  max-w-xs">
               Aún no hay mensajes. Escribe para coordinar los detalles del servicio.
             </Typography>
           </Box>
@@ -108,15 +108,18 @@ export default function ServiceChatPanel({
                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
                   isOwn
                     ? "bg-primary-500 text-white rounded-br-sm"
-                    : "bg-paper text-gray-900 border border-gray-200 rounded-bl-sm"
+                    : "bg-paper text-black border border-gray-200 rounded-bl-sm"
                 }`}
               >
-                <Typography sx={FONT} className="text-sm break-words">
+                <Typography
+                  sx={FONT}
+                  className={`text-sm break-words ${isOwn ? "text-white" : "text-black"}`}
+                >
                   {item.content}
                 </Typography>
                 <Typography
                   sx={FONT}
-                  className={`text-[10px] mt-1 ${isOwn ? "text-white/75" : "text-gray-500"}`}
+                  className={`text-[10px] mt-1 ${isOwn ? "text-white/75" : "text-black/50"}`}
                 >
                   {formatServiceDate(item.created_at)}
                 </Typography>

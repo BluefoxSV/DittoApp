@@ -160,7 +160,7 @@ export default function UserDashboard() {
               <CircularProgress size={18} />
             ) : (
               <>
-                <span className="hidden sm:inline">Solicitar</span>
+                <span className="hidden sm:inline" >Solicitar</span>
                 <i className="ti ti-send sm:hidden" aria-hidden="true" />
               </>
             )}

@@ -77,15 +77,15 @@ export default function ServiceRequestDialog({
       <DialogContent sx={{ p: 0 }}>
         <Box className="grid grid-cols-1 md:grid-cols-[0.9fr_1.1fr] min-h-[520px]">
           <Box className="p-5 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
-            <Typography sx={FONT} className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+            <Typography sx={{...FONT, color: "#676767"}} className="text-xs font-bold  uppercase tracking-wide">
               Descripción
             </Typography>
-            <Typography sx={FONT} className="text-sm text-gray-800 leading-relaxed mt-2 whitespace-pre-wrap">
+            <Typography sx={{...FONT, color: "#676767"}} className="text-sm  leading-relaxed mt-2 whitespace-pre-wrap">
               {request.description}
             </Typography>
 
             <Box className="mt-5 rounded-2xl bg-primary-50 border border-primary-200 p-4">
-              <Typography sx={FONT} className="text-xs text-gray-500">
+              <Typography sx={{...FONT, color: "#676767"}} className="text-xs text-gray-500">
                 Fecha de solicitud
               </Typography>
               <Typography sx={FONT} className="text-sm font-bold text-gray-900 mt-1">
