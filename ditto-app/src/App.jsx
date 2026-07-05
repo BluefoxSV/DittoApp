@@ -7,9 +7,9 @@ import Navbar from './components/layout/navBar';
 import Footer from './components/layout/footer';
 import SidebarNav from './components/layout/sidebarNav';
 
-// Rutas donde NO se muestran navbar/sidebar/footer (landing, login, register).
-// Ajustar a los paths reales del proyecto.
-const RUTAS_PUBLICAS = ['/', '/login', '/register', '/registro'];
+// Rutas donde el sidebar NO se muestra (navbar y footer siguen visibles siempre,
+// como los dejó el compañero). Ajustar a los paths reales.
+const RUTAS_SIN_SIDEBAR = ['/', '/login', '/register', '/registro'];
 
 function LoadingFallback() {
   return (
@@ -21,7 +21,7 @@ function LoadingFallback() {
 
 function AppRoutes() {
   const { pathname } = useLocation();
-  const esPublica = RUTAS_PUBLICAS.includes(pathname);
+  const conSidebar = !RUTAS_SIN_SIDEBAR.includes(pathname);
 
   const contenido = (
     <Suspense fallback={<LoadingFallback />}>
@@ -33,20 +33,22 @@ function AppRoutes() {
     </Suspense>
   );
 
-  if (esPublica) return contenido;
-
   return (
-    <Box>
+    <Box sx={{ '--ditto-navbar-height': { xs: '56px', sm: '64px' } }}>
       <AppBar position="static" sx={{ backgroundColor: '#BB6AF0' }}>
         <Navbar />
       </AppBar>
 
-      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <SidebarNav role="user" />
-        <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
-          {contenido}
+      {conSidebar ? (
+        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+          <SidebarNav role="user" />
+          <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
+            {contenido}
+          </Box>
         </Box>
-      </Box>
+      ) : (
+        contenido
+      )}
 
       <Footer />
     </Box>
