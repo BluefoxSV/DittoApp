@@ -24,6 +24,6 @@ export const SIDEBAR_ITEMS = {
       { key: "courses", to: "/lista-curso", icon: "ti-school", label: "Cursos" },
       { key: "chat", to: "/chat", icon: "ti-message-circle", label: "Chat con trabajador" },
       { key: "services", to: "/mis-servicios", icon: "ti-clipboard-list", label: "Mis servicios" },
-      { key: "profile", to: "/perfil", icon: "ti-user", label: "Perfil" },
+      { key: "profile", to: "/profile", icon: "ti-user", label: "Perfil" },
     ],
   };
