@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
@@ -8,6 +8,7 @@ import {
   CircularProgress,
   Container,
   FormControl,
+  FormHelperText,
   InputLabel,
   Link,
   MenuItem,
@@ -69,6 +70,46 @@ const OTHER_WORKER_FIELD_MAP = {
   academicStudies: "academic_history",
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const REQUIRED_FIELDS = ["email", "password", "confirmPassword", "name"];
+
+function validateRegisterForm(form) {
+  const errors = {};
+  const email = form.email.trim();
+
+  if (!email) {
+    errors.email = "El correo es obligatorio.";
+  } else if (!EMAIL_REGEX.test(email)) {
+    errors.email = "Ingresa un correo válido.";
+  }
+
+  if (!form.password) {
+    errors.password = "La contraseña es obligatoria.";
+  } else if (form.password.length < 8) {
+    errors.password = "La contraseña debe tener al menos 8 caracteres.";
+  }
+
+  if (!form.confirmPassword) {
+    errors.confirmPassword = "Confirma tu contraseña.";
+  } else if (form.password !== form.confirmPassword) {
+    errors.confirmPassword = "Las contraseñas no coinciden.";
+  }
+
+  if (!form.name?.trim()) {
+    errors.name = "El nombre es obligatorio.";
+  }
+
+  if (form.role === ROLES.WORKER && !isValidProfession(form.specializationArea)) {
+    errors.specializationArea = "Selecciona una profesión de la lista.";
+  }
+
+  return {
+    errors,
+    isValid: Object.keys(errors).length === 0,
+  };
+}
+
 function getErrorMessage(error, fallback) {
   if (!error) return fallback;
 
@@ -98,6 +139,8 @@ function buildInitialForm(role) {
 export default function RegisterForm() {
   const [form, setForm] = useState(() => buildInitialForm(ROLES.USER));
   const [error, setError] = useState("");
+  const [touched, setTouched] = useState({});
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -112,10 +155,31 @@ export default function RegisterForm() {
   const isLoading =
     isRegistering || isLoggingIn || isCreatingProfile || isCreatingWorkerProfile;
 
+  const { errors, isValid } = useMemo(() => validateRegisterForm(form), [form]);
+
   const allProfileFields = getFieldsByRole(form.role);
   const baseProfileFields = allProfileFields.filter(({ key }) => BASE_PROFILE_KEYS.has(key));
   const workerExtraFields = allProfileFields.filter(({ key }) => WORKER_EXTRA_KEYS.has(key));
   const isWorker = form.role === ROLES.WORKER;
+
+  const shouldShowError = (field) =>
+    Boolean((touched[field] || submitAttempted) && errors[field]);
+
+  const markTouched = (field) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const handleRoleChange = (event) => {
+    const role = event.target.value;
+    setForm(buildInitialForm(role));
+    setError("");
+    setTouched({});
+    setSubmitAttempted(false);
+  };
+
+  const handleChange = (field) => (event) => {
+    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
 
   const renderProfileField = ({
     key,
@@ -124,61 +188,43 @@ export default function RegisterForm() {
     rows,
     type = "text",
     InputLabelProps,
-  }) => (
-    <TextField
-      key={key}
-      fullWidth
-      id={key}
-      label={label}
-      type={type}
-      value={form[key] ?? ""}
-      onChange={handleChange(key)}
-      margin="normal"
-      multiline={multiline}
-      rows={rows}
-      InputLabelProps={InputLabelProps}
-      required={key === "name"}
-    />
-  );
+  }) => {
+    const isRequired = key === "name";
+    const fieldError = shouldShowError(key);
 
-  const handleRoleChange = (event) => {
-    const role = event.target.value;
-    setForm(buildInitialForm(role));
-    setError("");
-  };
-
-  const handleChange = (field) => (event) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+    return (
+      <TextField
+        key={key}
+        fullWidth
+        id={key}
+        label={label}
+        type={type}
+        value={form[key] ?? ""}
+        onChange={handleChange(key)}
+        onBlur={isRequired ? () => markTouched(key) : undefined}
+        margin="normal"
+        multiline={multiline}
+        rows={rows}
+        InputLabelProps={InputLabelProps}
+        required={isRequired}
+        error={fieldError}
+        helperText={fieldError ? errors[key] : undefined}
+      />
+    );
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+    setSubmitAttempted(true);
 
-    if (!form.email || !form.password || !form.confirmPassword) {
-      setError("Debes completar correo y contraseña.");
-      return;
-    }
+    const touchedFields = [...REQUIRED_FIELDS];
+    if (isWorker) touchedFields.push(PROFESSION_FIELD_KEY);
+    setTouched((prev) =>
+      Object.fromEntries(touchedFields.map((field) => [field, true])),
+    );
 
-    if (form.password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
-
-    if (!form.name?.trim()) {
-      setError("El nombre es obligatorio.");
-      return;
-    }
-
-    if (form.role === ROLES.WORKER && !isValidProfession(form.specializationArea)) {
-      setError("Debes seleccionar una profesión de la lista.");
-      return;
-    }
+    if (!isValid) return;
 
     try {
       const user = await register({
@@ -314,20 +360,27 @@ export default function RegisterForm() {
                     </Select>
                   </FormControl>
 
-                  {AUTH_FIELDS.map(({ key, label, type, autoComplete, helperText }) => (
-                    <TextField
-                      key={key}
-                      fullWidth
-                      id={key}
-                      label={label}
-                      type={type}
-                      value={form[key]}
-                      onChange={handleChange(key)}
-                      margin="normal"
-                      autoComplete={autoComplete}
-                      helperText={helperText}
-                    />
-                  ))}
+                  {AUTH_FIELDS.map(({ key, label, type, autoComplete, helperText }) => {
+                    const fieldError = shouldShowError(key);
+
+                    return (
+                      <TextField
+                        key={key}
+                        fullWidth
+                        id={key}
+                        label={label}
+                        type={type}
+                        value={form[key]}
+                        onChange={handleChange(key)}
+                        onBlur={() => markTouched(key)}
+                        margin="normal"
+                        autoComplete={autoComplete}
+                        required
+                        error={fieldError}
+                        helperText={fieldError ? errors[key] : helperText}
+                      />
+                    );
+                  })}
 
                   <Typography
                     variant="subtitle2"
@@ -339,14 +392,23 @@ export default function RegisterForm() {
                   {baseProfileFields.map(renderProfileField)}
 
                   {isWorker && (
-                    <FormControl fullWidth margin="normal" required>
+                    <FormControl
+                      fullWidth
+                      margin="normal"
+                      required
+                      error={shouldShowError(PROFESSION_FIELD_KEY)}
+                    >
                       <InputLabel id="profession-label">Profesión</InputLabel>
                       <Select
                         labelId="profession-label"
                         id={PROFESSION_FIELD_KEY}
                         value={form.specializationArea}
                         label="Profesión"
-                        onChange={handleChange(PROFESSION_FIELD_KEY)}
+                        onChange={(event) => {
+                          handleChange(PROFESSION_FIELD_KEY)(event);
+                          markTouched(PROFESSION_FIELD_KEY);
+                        }}
+                        onBlur={() => markTouched(PROFESSION_FIELD_KEY)}
                       >
                         <MenuItem value="" disabled>
                           Selecciona una profesión
@@ -357,6 +419,9 @@ export default function RegisterForm() {
                           </MenuItem>
                         ))}
                       </Select>
+                      {shouldShowError(PROFESSION_FIELD_KEY) && (
+                        <FormHelperText>{errors.specializationArea}</FormHelperText>
+                      )}
                     </FormControl>
                   )}
 
@@ -378,7 +443,7 @@ export default function RegisterForm() {
                       fullWidth
                       type="submit"
                       variant="contained"
-                      disabled={isLoading}
+                      disabled={isLoading || !isValid}
                       sx={{
                         py: 1.4,
                         borderRadius: 2,
@@ -386,6 +451,10 @@ export default function RegisterForm() {
                         textTransform: "none",
                         bgcolor: "#12679b",
                         "&:hover": { bgcolor: "#0f587f" },
+                        "&.Mui-disabled": {
+                          bgcolor: "#b0bec5",
+                          color: "#ffffff",
+                        },
                       }}
                     >
                       {isLoading ? (
