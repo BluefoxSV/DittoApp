@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     gowa_webhook_secret: str = "secret"
     whatsapp_api_key: str | None = None
     n8n_webhook_url: str | None = None
+    elevenlabs_api_key: str | None = None
+    elevenlabs_agent_id: str | None = None
 
 
 settings = Settings()
