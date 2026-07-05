@@ -321,6 +321,7 @@ export default function ServiceRequestDialog({
               currentUserId={currentUserId}
               title={counterpartLabel}
               enabled={chatEnabled}
+              active={open}
               requestStatus={request.status}
             />
           </Box>
