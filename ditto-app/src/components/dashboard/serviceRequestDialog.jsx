@@ -306,8 +306,8 @@ export default function ServiceRequestDialog({
 
           <Box className="min-h-[420px]">
             <ServiceChatPanel
+              requestId={request.id}
               currentUserId={currentUserId}
-              otherUserId={otherUserId}
               title={counterpartLabel}
               enabled={chatEnabled}
               requestStatus={request.status}

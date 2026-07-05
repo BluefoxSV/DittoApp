@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
 
-import { useGetConversationQuery, useSendChatMessageMutation } from "../../store/api/chatApi";
+import {
+  useGetRequestConversationQuery,
+  useSendRequestChatMessageMutation,
+} from "../../store/api/chatApi";
 import { formatServiceDate, getApiErrorMessage } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
 export default function ServiceChatPanel({
+  requestId,
   currentUserId,
-  otherUserId,
   title,
   enabled,
   requestStatus,
@@ -21,12 +24,12 @@ export default function ServiceChatPanel({
     isLoading,
     isFetching,
     error: conversationError,
-  } = useGetConversationQuery(
-    { userId: currentUserId, otherUserId },
-    { skip: !enabled || !currentUserId || !otherUserId, pollingInterval: 5000 },
-  );
+  } = useGetRequestConversationQuery(requestId, {
+    skip: !enabled || !requestId || !currentUserId,
+    pollingInterval: 5000,
+  });
   const [sendMessage, { isLoading: isSending, error: sendError }] =
-    useSendChatMessageMutation();
+    useSendRequestChatMessageMutation();
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,14 +38,10 @@ export default function ServiceChatPanel({
   const handleSubmit = async (event) => {
     event.preventDefault();
     const content = message.trim();
-    if (!content || isSending) return;
+    if (!content || isSending || !requestId) return;
 
     try {
-      await sendMessage({
-        senderId: currentUserId,
-        receiverId: otherUserId,
-        content,
-      }).unwrap();
+      await sendMessage({ requestId, content }).unwrap();
       setMessage("");
     } catch {
       // El error de la mutación se muestra debajo del formulario.
@@ -104,8 +103,8 @@ export default function ServiceChatPanel({
 
         {!isLoading && !conversationError && messages.length === 0 ? (
           <Box className="h-full flex items-center justify-center text-center">
-            <Typography sx={{...FONT, color: "#676767"}} className="text-sm  max-w-xs">
-              Aún no hay mensajes. Escribe para coordinar los detalles del servicio.
+            <Typography sx={{ ...FONT, color: "#676767" }} className="text-sm max-w-xs">
+              Aún no hay mensajes para esta solicitud. Escribe para coordinar los detalles.
             </Typography>
           </Box>
         ) : null}
