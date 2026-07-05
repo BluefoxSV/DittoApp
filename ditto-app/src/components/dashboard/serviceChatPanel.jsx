@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
 
-import { useGetConversationQuery, useSendChatMessageMutation } from "../../store/api/chatApi";
+import {
+  useGetRequestConversationQuery,
+  useSendRequestChatMessageMutation,
+} from "../../store/api/chatApi";
 import { formatServiceDate, getApiErrorMessage } from "./serviceRequestUi";
 import WaitingForAcceptance from "../../components/dashboard/waitingForAcceptance";
 
@@ -9,8 +12,8 @@ import WaitingForAcceptance from "../../components/dashboard/waitingForAcceptanc
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
 export default function ServiceChatPanel({
+  requestId,
   currentUserId,
-  otherUserId,
   title,
   enabled,
   active = true,
@@ -34,7 +37,7 @@ export default function ServiceChatPanel({
     },
   );
   const [sendMessage, { isLoading: isSending, error: sendError }] =
-    useSendChatMessageMutation();
+    useSendRequestChatMessageMutation();
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -47,8 +50,7 @@ export default function ServiceChatPanel({
 
     try {
       await sendMessage({
-        senderId: currentUserId,
-        receiverId: otherUserId,
+        requestId,
         content,
       }).unwrap();
       setMessage("");
