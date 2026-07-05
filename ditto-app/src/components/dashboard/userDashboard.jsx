@@ -225,7 +225,7 @@ export default function UserDashboard() {
           {getApiErrorMessage(requestsError, "No se pudieron cargar tus solicitudes.")}
         </Alert>
       ) : null}
-      <Box className="border border-gray-200 rounded-2xl overflow-hidden">
+      <Box className="bg-primary-100 border border-primary-200 hover:bg-primary-200 hover:border-primary-300 transition-colors">
         {isLoadingRequests ? (
           <Box className="p-8 flex justify-center">
             <CircularProgress size={28} />
@@ -253,7 +253,7 @@ export default function UserDashboard() {
                 <Typography sx={FONT} className="text-base font-bold text-gray-900 truncate">
                   {workerLabel(worker)} — {request.description}
                 </Typography>
-                <Typography sx={FONT} className="text-sm text-gray-600 mt-1">
+                <Typography sx={FONT} className="text-sm text-[#fffff] mt-1">
                   {formatServiceDate(request.created_at)}
                 </Typography>
               </Box>
