@@ -24,7 +24,7 @@ import Navbar from '../../components/layout/navBar';
 const slides = [
   {
     eyebrow: 'Servicios cerca de ti',
-    title: 'El talento que necesitas, justo cuando lo necesitas',
+    title: 'El talento que necesitas, justo lo que necesitas',
     description:
       'Conecta con carpinteros, fontaneros, electricistas y otros profesionales independientes de confianza.',
     primaryAction: 'Encontrar un profesional',
@@ -186,10 +186,10 @@ export default function HomePage() {
                 fontSize: {
                   xs: 'clamp(2.25rem, 11vw, 3rem)',
                   sm: 'clamp(3rem, 7vw, 4.25rem)',
-                  lg: '4.5rem',
+                  lg: '4rem',
                 },
                 lineHeight: { xs: 1.04, md: 1 },
-                fontWeight: 800,
+                fontWeight: 700,
                 letterSpacing: '-0.045em',
                 color: '#fff',
               }}

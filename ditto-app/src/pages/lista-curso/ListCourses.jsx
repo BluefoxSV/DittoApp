@@ -41,7 +41,7 @@ const cursos = [
   {
     id: 4,
     categoria: 'Negocios',
-    titulo: 'Productividad y organización',
+    titulo: 'Productividad y organización 2',
     descripcion: 'Mejora tus procesos diarios con metodologías simples y efectivas.',
     imagen:
       'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=900&q=80',
@@ -57,7 +57,7 @@ const cursos = [
   {
     id: 6,
     categoria: 'Negocios',
-    titulo: 'Productividad y organización',
+    titulo: 'Productividad y organización 3',
     descripcion: 'Mejora tus procesos diarios con metodologías simples y efectivas.',
     imagen:
       'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=900&q=80',
@@ -65,7 +65,7 @@ const cursos = [
   {
     id: 7,
     categoria: 'Negocios',
-    titulo: 'Productividad y organización',
+    titulo: 'Productividad y organización 4',
     descripcion: 'Mejora tus procesos diarios con metodologías simples y efectivas.',
     imagen:
       'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=900&q=80',
