@@ -35,7 +35,7 @@ export default function ListCourses() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const workerId = workerProfile?.id;
   const isWorker = user?.role === "worker";
-  const canCreateCourses = user?.role === "support";
+  const canCreateCourses = Boolean(user);
   const {
     data: courses = [],
     isLoading: isLoadingCourses,
