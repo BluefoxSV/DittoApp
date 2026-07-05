@@ -3,6 +3,10 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.schemas.elevenlabs import ElevenLabsConversationConfig
+from app.services.elevenlabs_intake_prompt import (
+    DITTOAPP_FIRST_MESSAGE,
+    DITTOAPP_INTAKE_PROMPT,
+)
 
 ELEVENLABS_SIGNED_URL = (
     "https://api.elevenlabs.io/v1/convai/conversation/get-signed-url"
@@ -62,11 +66,24 @@ async def get_conversation_config() -> ElevenLabsConversationConfig:
             detail="ELEVENLABS_AGENT_ID no está configurado en el servidor.",
         )
 
+    prompt_override = settings.elevenlabs_intake_prompt or DITTOAPP_INTAKE_PROMPT
+    first_message_override = settings.elevenlabs_first_message or DITTOAPP_FIRST_MESSAGE
+    shared = {
+        "prompt_override": prompt_override,
+        "first_message_override": first_message_override,
+        "min_follow_up_questions": settings.elevenlabs_min_follow_up_questions,
+    }
+
     if settings.elevenlabs_use_signed_url:
         signed_url = await get_signed_url()
-        return ElevenLabsConversationConfig(mode="signed_url", signed_url=signed_url)
+        return ElevenLabsConversationConfig(
+            mode="signed_url",
+            signed_url=signed_url,
+            **shared,
+        )
 
     return ElevenLabsConversationConfig(
         mode="agent_id",
         agent_id=settings.elevenlabs_agent_id,
+        **shared,
     )

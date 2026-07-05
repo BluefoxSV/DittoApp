@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -19,10 +19,41 @@ import { getApiErrorMessage } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
+const DITTOAPP_SESSION_CONTEXT =
+  "Modo entrevista DittoApp: el cliente PUBLICA una solicitud para que un trabajador especializado vaya a su domicilio. Prohibido diagnosticar, dar tips, listas de causas o soluciones caseras.";
+
+function buildIntakePayload(description) {
+  return `[PUBLICAR SOLICITUD EN DITTOAPP]
+El cliente quiere publicar para que un ESPECIALISTA de DittoApp venga en persona. Tu rol es entrevistador, NO técnico.
+
+Prohibido: diagnosticar, consejos, listas de causas, explicar reparaciones.
+
+Problema del cliente:
+${description.trim()}`;
+}
+
 function endConversationSession(endSession) {
   if (typeof endSession === "function") {
     endSession();
   }
+}
+
+function buildLocalSummary(messages, initialDescription) {
+  const userLines = messages
+    .filter(({ role, text }) => role === "user" && text?.trim())
+    .map(({ text }) => text.trim());
+
+  const detailLines = userLines.slice(1);
+  const parts = [
+    `Problema inicial: ${initialDescription.trim()}`,
+  ];
+
+  if (detailLines.length > 0) {
+    parts.push("", "Detalles adicionales del cliente:");
+    detailLines.forEach((line) => parts.push(`- ${line}`));
+  }
+
+  return parts.join("\n");
 }
 
 function extractAgentText(message) {
@@ -49,6 +80,7 @@ function IntakeChatBody({
   onFallbackPublish,
   isPublishing,
   finalSummary,
+  setFinalSummary,
   elevenLabsUnavailable,
   setElevenLabsUnavailable,
   connectionError,
@@ -61,19 +93,22 @@ function IntakeChatBody({
   );
   const [draft, setDraft] = useState("");
   const [isConnecting, setIsConnecting] = useState(true);
+  const [minFollowUp, setMinFollowUp] = useState(3);
   const initialSentRef = useRef(false);
   const streamingIdRef = useRef(null);
   const lastAgentTextRef = useRef("");
   const endRef = useRef(null);
   const connectAttemptRef = useRef(0);
+  const summaryNudgeRef = useRef(false);
 
   const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
 
-  const sendInitialMessage = (sendFn) => {
+  const sendInitialMessage = (sendFn, contextualFn) => {
     if (initialSentRef.current || !initialDescription || typeof sendFn !== "function") {
       return false;
     }
-    sendFn(initialDescription);
+    contextualFn?.(DITTOAPP_SESSION_CONTEXT);
+    sendFn(buildIntakePayload(initialDescription));
     initialSentRef.current = true;
     return true;
   };
@@ -169,9 +204,15 @@ function IntakeChatBody({
     },
   });
 
-  const { startSession, endSession, sendUserMessage, sendUserActivity, status } = conversation;
+  const { startSession, endSession, sendUserMessage, sendUserActivity, sendContextualUpdate, status } =
+    conversation;
   const isConnected = status === "connected";
   const canSendMessages = isConnected && !isConnecting;
+  const followUpCount = useMemo(
+    () => Math.max(0, messages.filter(({ role }) => role === "user").length - 1),
+    [messages],
+  );
+  const canRequestSummary = canSendMessages && followUpCount >= minFollowUp && !finalSummary;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -181,11 +222,21 @@ function IntakeChatBody({
     if (!canSendMessages) return undefined;
 
     const timer = window.setTimeout(() => {
-      sendInitialMessage(sendUserMessage);
+      sendInitialMessage(sendUserMessage, sendContextualUpdate);
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [canSendMessages, initialDescription, sendUserMessage]);
+  }, [canSendMessages, initialDescription, sendUserMessage, sendContextualUpdate]);
+
+  useEffect(() => {
+    if (!canSendMessages || finalSummary || summaryNudgeRef.current) return;
+    if (followUpCount < minFollowUp) return;
+
+    summaryNudgeRef.current = true;
+    sendUserMessage(
+      "STOP. No des diagnósticos ni consejos técnicos. Eres entrevistador de DittoApp. Llama AHORA a finalizar_solicitud con el resumen para publicar la solicitud y que un especialista vaya al domicilio del cliente.",
+    );
+  }, [canSendMessages, finalSummary, followUpCount, minFollowUp, sendUserMessage]);
 
   useEffect(() => {
     if (!isConnecting) return undefined;
@@ -206,15 +257,29 @@ function IntakeChatBody({
     let cancelled = false;
     initialSentRef.current = false;
     lastAgentTextRef.current = "";
+    summaryNudgeRef.current = false;
 
     async function connect() {
       try {
         const config = await fetchConversationConfig().unwrap();
         if (cancelled || connectAttemptRef.current !== attemptId) return;
 
+        setMinFollowUp(config.min_follow_up_questions ?? 3);
+
         const sessionOptions = {
           userId: userId ? String(userId) : undefined,
         };
+
+        if (config.prompt_override) {
+          sessionOptions.overrides = {
+            conversation: { textOnly: true },
+            agent: {
+              prompt: { prompt: config.prompt_override },
+              firstMessage: config.first_message_override ?? undefined,
+              language: "es",
+            },
+          };
+        }
 
         if (config.mode === "signed_url" && config.signed_url) {
           sessionOptions.signedUrl = config.signed_url;
@@ -269,6 +334,17 @@ function IntakeChatBody({
     setDraft("");
   };
 
+  const handleRequestSummary = () => {
+    if (!canSendMessages) return;
+    sendUserMessage(
+      "No des consejos ni diagnósticos. Genera el resumen para PUBLICAR la solicitud en DittoApp y llama finalizar_solicitud con el parámetro resumen (problema, ubicación, urgencia, qué debe hacer el especialista on-site).",
+    );
+  };
+
+  const handleLocalSummary = () => {
+    setFinalSummary(buildLocalSummary(messages, initialDescription));
+  };
+
   if (elevenLabsUnavailable) {
     return (
       <>
@@ -300,10 +376,11 @@ function IntakeChatBody({
       <DialogContent className="p-0 flex flex-col" sx={{ minHeight: 420 }}>
         <Box className="px-5 py-4 border-b border-gray-200 bg-paper">
           <Typography sx={FONT} className="text-sm font-bold text-gray-900">
-            Detallemos tu solicitud
+            Publicemos tu solicitud
           </Typography>
           <Typography sx={FONT} className="text-xs text-gray-600 mt-1">
-            Responde las preguntas para que los trabajadores tengan toda la información.
+            Respondemos unas preguntas para que un especialista de DittoApp vea tu pedido y vaya a
+            ayudarte ({followUpCount}/{minFollowUp} mínimo).
           </Typography>
         </Box>
 
@@ -327,6 +404,27 @@ function IntakeChatBody({
               ) : (
                 "Publicar con la descripción original"
               )}
+            </Button>
+          </Box>
+        ) : null}
+
+        {canRequestSummary ? (
+          <Box className="mx-4 mb-3 flex flex-col gap-2">
+            <Button
+              variant="outlined"
+              fullWidth
+              onClick={handleRequestSummary}
+              sx={{ ...FONT, textTransform: "none", borderRadius: 3 }}
+            >
+              Generar resumen con IA
+            </Button>
+            <Button
+              variant="text"
+              fullWidth
+              onClick={handleLocalSummary}
+              sx={{ ...FONT, textTransform: "none", color: "#874cad" }}
+            >
+              Usar conversación como descripción
             </Button>
           </Box>
         ) : null}
@@ -451,15 +549,18 @@ export default function ServiceIntakeChat({
   const [connectionError, setConnectionError] = useState(null);
   const [elevenLabsUnavailable, setElevenLabsUnavailable] = useState(false);
 
+  const registerSummary = useCallback((resumen) => {
+    const summary = typeof resumen === "string" ? resumen.trim() : "";
+    if (summary) setFinalSummary(summary);
+    return "Resumen registrado. El usuario puede publicar.";
+  }, []);
+
   const clientTools = useMemo(
     () => ({
-      finalizar_solicitud: ({ resumen }) => {
-        const summary = typeof resumen === "string" ? resumen.trim() : "";
-        if (summary) setFinalSummary(summary);
-        return "Resumen registrado. El usuario puede publicar.";
-      },
+      finalizar_solicitud: ({ resumen }) => registerSummary(resumen),
+      generar_resumen: ({ resumen }) => registerSummary(resumen),
     }),
-    [],
+    [registerSummary],
   );
 
   const handleClose = () => {
@@ -497,6 +598,7 @@ export default function ServiceIntakeChat({
             onFallbackPublish={onFallbackPublish}
             isPublishing={isPublishing}
             finalSummary={finalSummary}
+            setFinalSummary={setFinalSummary}
             elevenLabsUnavailable={elevenLabsUnavailable}
             setElevenLabsUnavailable={setElevenLabsUnavailable}
             connectionError={connectionError}

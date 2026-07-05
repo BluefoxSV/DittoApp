@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str | None = None
     elevenlabs_agent_id: str | None = None
     elevenlabs_use_signed_url: bool = False
+    elevenlabs_intake_prompt: str | None = None
+    elevenlabs_first_message: str | None = None
+    elevenlabs_min_follow_up_questions: int = 3
 
 
 settings = Settings()
