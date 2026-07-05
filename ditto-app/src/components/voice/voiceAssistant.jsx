@@ -745,7 +745,9 @@ export default function VoiceAssistant() {
   const [sessionKey, setSessionKey] = useState(0);
   const [createRequest, { isLoading: isPublishing }] = useCreateServiceRequestMutation();
 
-  const isClient = isAuthenticated && user?.role !== "worker" && user?.role !== "support";
+  const userId = user?.id;
+  const isClient =
+    isAuthenticated && Boolean(userId) && user?.role !== "worker" && user?.role !== "support";
 
   const handleOpen = () => {
     setSessionKey((key) => key + 1);
@@ -753,11 +755,11 @@ export default function VoiceAssistant() {
   };
 
   const handleConfirm = async (finalDescription) => {
-    if (!finalDescription.trim() || !user?.id) return;
+    if (!finalDescription.trim() || !userId) return;
 
     try {
       await createRequest({
-        userId: user.id,
+        userId,
         description: finalDescription.trim(),
         latitude: coords?.latitude,
         longitude: coords?.longitude,
@@ -777,7 +779,7 @@ export default function VoiceAssistant() {
         key={sessionKey}
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        userId={user.id}
+        userId={userId}
         coords={coords}
         onConfirm={handleConfirm}
         isPublishing={isPublishing}
