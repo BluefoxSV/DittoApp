@@ -87,10 +87,18 @@ export default function ListCourses() {
               >
                 <CardMedia
                   component="img"
-                  height="180"
+                  height={50}
                   image={curso.imagen}
                   alt={curso.titulo}
-                  sx={{ objectFit: 'cover', flexShrink: 0 }}
+                  sx={{
+                    width: 420,
+                    height: 150,
+                    mx: 'auto',
+                    mt: 1.5,
+                    objectFit: 'cover',
+                    borderRadius: 2,
+                    flexShrink: 0,
+                  }}
                 />
                 <CardContent
                   sx={{
