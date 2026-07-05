@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -25,19 +25,6 @@ function endConversationSession(endSession) {
   }
 }
 
-function extractMessageText(message) {
-  if (typeof message === "string") return message;
-  if (!message || typeof message !== "object") return "";
-
-  return (
-    message.message ??
-    message.text ??
-    message.agent_response ??
-    message.agent_response_event?.agent_response ??
-    ""
-  );
-}
-
 function IntakeChatBody({
   initialDescription,
   userId,
@@ -51,38 +38,23 @@ function IntakeChatBody({
   connectionError,
   setConnectionError,
 }) {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() =>
+    initialDescription
+      ? [{ role: "user", text: initialDescription, id: Date.now() }]
+      : [],
+  );
   const [draft, setDraft] = useState("");
   const [isConnecting, setIsConnecting] = useState(true);
   const initialSentRef = useRef(false);
   const streamingIdRef = useRef(null);
   const endRef = useRef(null);
+  const connectAttemptRef = useRef(0);
 
   const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
-
-  const appendAgentMessage = useCallback((text) => {
-    const cleanText = text.trim();
-    if (!cleanText) return;
-
-    setMessages((prev) => {
-      const last = prev[prev.length - 1];
-      if (last?.role === "agent" && last.id === streamingIdRef.current) {
-        return [...prev.slice(0, -1), { ...last, text: cleanText }];
-      }
-      streamingIdRef.current = Date.now();
-      return [...prev, { role: "agent", text: cleanText, id: streamingIdRef.current }];
-    });
-  }, []);
+  const sendUserMessageRef = useRef(null);
 
   const conversation = useConversation({
     textOnly: true,
-    onMessage: (message) => {
-      const source = message?.source ?? message?.role ?? message?.type;
-      if (source === "user" || source === "user_transcript") return;
-
-      const text = extractMessageText(message);
-      if (text) appendAgentMessage(text);
-    },
     onAgentChatResponsePart: (part) => {
       if (part.type === "start") {
         streamingIdRef.current = Date.now();
@@ -116,10 +88,26 @@ function IntakeChatBody({
         streamingIdRef.current = null;
       }
     },
+    onConnect: () => {
+      setConnectionError(null);
+      setIsConnecting(false);
+
+      if (initialSentRef.current || !initialDescription) return;
+
+      sendUserMessageRef.current?.(initialDescription);
+      initialSentRef.current = true;
+    },
     onError: (error) => {
-      setConnectionError(
-        typeof error === "string" ? error : "Error en la conversación con ElevenLabs.",
-      );
+      const message =
+        typeof error === "string"
+          ? error
+          : error instanceof Error
+            ? error.message
+            : "Error en la conversación con ElevenLabs.";
+
+      if (message.toLowerCase().includes("disconnected")) return;
+
+      setConnectionError(message);
       setIsConnecting(false);
     },
   });
@@ -128,22 +116,32 @@ function IntakeChatBody({
   const isConnected = status === "connected";
 
   useEffect(() => {
+    sendUserMessageRef.current = sendUserMessage;
+  }, [sendUserMessage]);
+
+  useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, finalSummary]);
 
   useEffect(() => {
     if (!initialDescription) return undefined;
 
+    const attemptId = connectAttemptRef.current + 1;
+    connectAttemptRef.current = attemptId;
     let cancelled = false;
     initialSentRef.current = false;
 
     async function connect() {
       try {
         const config = await fetchConversationConfig().unwrap();
-        if (cancelled) return;
+        if (cancelled || connectAttemptRef.current !== attemptId) return;
 
         const sessionOptions = {
           userId: userId ? String(userId) : undefined,
+          overrides: {
+            conversation: { textOnly: true },
+            agent: { firstMessage: "" },
+          },
         };
 
         if (config.mode === "signed_url" && config.signed_url) {
@@ -154,17 +152,9 @@ function IntakeChatBody({
           throw new Error("Configuración de ElevenLabs inválida.");
         }
 
-        await startSession(sessionOptions);
-        if (cancelled) return;
-
-        if (!initialSentRef.current) {
-          sendUserMessage(initialDescription);
-          setMessages([{ role: "user", text: initialDescription, id: Date.now() }]);
-          initialSentRef.current = true;
-        }
-        setIsConnecting(false);
+        startSession(sessionOptions);
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || connectAttemptRef.current !== attemptId) return;
         if (error?.status === 503 || error?.status === 502) {
           setElevenLabsUnavailable(true);
         } else {
@@ -188,7 +178,6 @@ function IntakeChatBody({
     fetchConversationConfig,
     startSession,
     endSession,
-    sendUserMessage,
     setConnectionError,
     setElevenLabsUnavailable,
   ]);
@@ -246,13 +235,13 @@ function IntakeChatBody({
           </Typography>
         </Box>
 
-        {connectionError ? (
+        {connectionError && !isConnected ? (
           <Alert severity="error" className="mx-4 mt-4">
             {connectionError}
           </Alert>
         ) : null}
 
-        {connectionError ? (
+        {connectionError && !isConnected ? (
           <Box className="mx-4 mb-3">
             <Button
               variant="outlined"
@@ -271,7 +260,7 @@ function IntakeChatBody({
         ) : null}
 
         <Box className="flex-1 min-h-[280px] max-h-[50vh] overflow-y-auto px-4 py-5 space-y-3 bg-gray-50">
-          {isConnecting ? (
+          {isConnecting && messages.length === 0 ? (
             <Box className="h-full flex items-center justify-center gap-2">
               <CircularProgress size={24} />
               <Typography sx={FONT} className="text-sm text-gray-600">
@@ -280,8 +269,7 @@ function IntakeChatBody({
             </Box>
           ) : null}
 
-          {!isConnecting &&
-            messages.map((item) => {
+          {messages.map((item) => {
               const isOwn = item.role === "user";
               return (
                 <Box key={item.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
@@ -304,6 +292,12 @@ function IntakeChatBody({
                 </Box>
               );
             })}
+
+          {isConnecting && messages.length > 0 ? (
+            <Typography sx={FONT} className="text-xs text-gray-500 text-center">
+              Conectando con el asistente...
+            </Typography>
+          ) : null}
           <div ref={endRef} />
         </Box>
 
