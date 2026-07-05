@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
   Box,
   Button,
@@ -12,33 +14,56 @@ import {
 } from "@mui/material";
 
 import logo from "../../../src/assets/icon-192.png";
+import { useLoginMutation } from "../../store/api/authApi";
+import { useLazyGetMeQuery } from "../../store/api/usersApi";
+import { setCredentials } from "../../store/slices/authSlice";
+
+const DASHBOARD_BY_ROLE = {
+  worker: "/dashtrabaja",
+  user: "/dashusu",
+  support: "/dashusu",
+};
+
+function getLoginErrorMessage(error) {
+  if (!error) return "Ocurrió un error al iniciar sesión.";
+
+  const detail = error.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail.map((item) => item.msg).join(", ");
+  }
+
+  return "Ocurrió un error al iniciar sesión.";
+}
 
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [login, { isLoading }] = useLoginMutation();
+  const [fetchMe] = useLazyGetMeQuery();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     setError("");
-    setSuccess("");
-    setLoading(true);
+
+    if (!email || !password) {
+      setError("Debes ingresar correo y contraseña.");
+      return;
+    }
 
     try {
-      if (!email || !password) {
-        setError("Debes ingresar correo y contraseña.");
-        return;
-      }
+      await login({ email, password }).unwrap();
+      const user = await fetchMe().unwrap();
+      dispatch(setCredentials({ user }));
 
-      setSuccess("Login procesado correctamente.");
+      const dashboardPath = DASHBOARD_BY_ROLE[user.role] ?? "/";
+      navigate(dashboardPath);
     } catch (err) {
-      setError("Ocurrió un error al iniciar sesión.");
-    } finally {
-      setLoading(false);
+      setError(getLoginErrorMessage(err));
     }
   };
 
@@ -136,12 +161,6 @@ export default function LoginForm() {
                     </Alert>
                   )}
 
-                  {success && (
-                    <Alert severity="success" sx={{ mb: 2 }}>
-                      {success}
-                    </Alert>
-                  )}
-
                   <TextField
                     fullWidth
                     id="email"
@@ -171,7 +190,7 @@ export default function LoginForm() {
                       fullWidth
                       type="submit"
                       variant="contained"
-                      disabled={loading}
+                      disabled={isLoading}
                       sx={{
                         py: 1.4,
                         borderRadius: 2,
@@ -183,7 +202,7 @@ export default function LoginForm() {
                         },
                       }}
                     >
-                      {loading ? (
+                      {isLoading ? (
                         <CircularProgress size={24} color="inherit" />
                       ) : (
                         "Iniciar sesión"
