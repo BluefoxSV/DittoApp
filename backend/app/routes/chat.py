@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.dependencies.auth import get_user
 from app.models.user import User, UserRole
-from app.schemas.chat import ChatMessageCreate, ChatMessageRead
+from app.schemas.chat import ChatMessageCreate, ChatMessageRead, ServiceRequestChatMessageCreate
 from app.services import chat_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -28,3 +28,20 @@ async def get_conversation(
     if current_user.id not in (user_id, other_user_id) and current_user.role != UserRole.SUPPORT:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
     return await chat_service.get_conversation(user_id, other_user_id)
+
+
+@router.get("/service-requests/{request_id}/messages", response_model=list[ChatMessageRead])
+async def get_request_conversation(
+    request_id: int,
+    current_user: User = Depends(get_user),
+):
+    return await chat_service.get_request_conversation(request_id, current_user.id)
+
+
+@router.post("/service-requests/{request_id}/messages", response_model=ChatMessageRead, status_code=201)
+async def send_request_message(
+    request_id: int,
+    data: ServiceRequestChatMessageCreate,
+    current_user: User = Depends(get_user),
+):
+    return await chat_service.send_request_message(request_id, current_user.id, data.content)
