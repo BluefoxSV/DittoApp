@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
   Box,
@@ -61,15 +61,24 @@ function getLoginErrorMessage(error) {
   return "Ocurrió un error al iniciar sesión.";
 }
 
+function getSafeRedirectPath(path) {
+  if (typeof path !== "string") return "";
+  if (!path.startsWith("/") || path.startsWith("//")) return "";
+
+  return path;
+}
+
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const dispatch = useDispatch();
+  const location = useLocation();
   const navigate = useNavigate();
   const [login, { isLoading }] = useLoginMutation();
   const [fetchMe] = useLazyGetMeQuery();
+  const redirectTo = getSafeRedirectPath(location.state?.redirectTo);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,7 +94,7 @@ export default function LoginForm() {
       const user = await fetchMe().unwrap();
       dispatch(setCredentials({ user }));
 
-      navigate(getDashboardPath(user.role));
+      navigate(redirectTo || getDashboardPath(user.role), { replace: true });
     } catch (err) {
       setError(getLoginErrorMessage(err));
     }

@@ -8,6 +8,10 @@ import {
   CardMedia,
   Chip,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   IconButton,
   Paper,
@@ -17,8 +21,9 @@ import {
 import ArrowBackIosNewRounded from '@mui/icons-material/ArrowBackIosNewRounded';
 import ArrowForwardIosRounded from '@mui/icons-material/ArrowForwardIosRounded';
 import FiberManualRecordRounded from '@mui/icons-material/FiberManualRecordRounded';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
+import { useGetCoursesQuery } from '../../store/api/coursesApi';
 
 const slides = [
   {
@@ -62,34 +67,10 @@ const services = [
   { icon: '🌿', name: 'Jardinería', detail: 'Cuidado y diseño de áreas verdes' },
 ];
 
-const courses = [
-  {
-    category: 'Carpintería',
-    title: 'Carpintería desde cero',
-    description: 'Herramientas, medidas, cortes y ensambles para tus primeros proyectos.',
-    lessons: '12 lecciones',
-    duration: '6 horas',
-    color: '#7c3aed',
-    imagePosition: '18% center',
-  },
-  {
-    category: 'Fontanería',
-    title: 'Instalaciones hidráulicas',
-    description: 'Diagnostica fallas y realiza instalaciones domésticas correctamente.',
-    lessons: '10 lecciones',
-    duration: '5 horas',
-    color: '#0284c7',
-    imagePosition: '52% center',
-  },
-  {
-    category: 'Electricidad',
-    title: 'Electricidad residencial segura',
-    description: 'Fundamentos, circuitos y prácticas esenciales de seguridad.',
-    lessons: '14 lecciones',
-    duration: '8 horas',
-    color: '#d97706',
-    imagePosition: '80% center',
-  },
+const courseCardMeta = [
+  { color: '#7c3aed', imagePosition: '18% center' },
+  { color: '#0284c7', imagePosition: '52% center' },
+  { color: '#d97706', imagePosition: '80% center' },
 ];
 
 const steps = [
@@ -111,7 +92,12 @@ const steps = [
 ];
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeCourse, setActiveCourse] = useState(0);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [pendingCoursePath, setPendingCoursePath] = useState("");
+  const { data: courses = [] } = useGetCoursesQuery();
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -122,11 +108,32 @@ export default function HomePage() {
   }, []);
 
   const slide = slides[activeSlide];
+  const visibleCourses =
+    courses.length > 3
+      ? Array.from({ length: 3 }, (_, index) => courses[(activeCourse + index) % courses.length])
+      : courses;
   const showPreviousSlide = () => {
     setActiveSlide((current) => (current - 1 + slides.length) % slides.length);
   };
   const showNextSlide = () => {
     setActiveSlide((current) => (current + 1) % slides.length);
+  };
+  const showPreviousCourse = () => {
+    setActiveCourse((current) => (current - 1 + courses.length) % courses.length);
+  };
+  const showNextCourse = () => {
+    setActiveCourse((current) => (current + 1) % courses.length);
+  };
+  const openLoginModal = (courseId) => {
+    setPendingCoursePath(`/curso/${courseId}`);
+    setIsLoginModalOpen(true);
+  };
+  const closeLoginModal = () => {
+    setIsLoginModalOpen(false);
+  };
+  const goToLogin = () => {
+    setIsLoginModalOpen(false);
+    navigate('/login', { state: { redirectTo: pendingCoursePath || '/lista-curso' } });
   };
 
   return (
@@ -482,51 +489,72 @@ export default function HomePage() {
                   Empieza a aprender hoy
                 </Typography>
               </Box>
-              {/* <Button component={RouterLink} to="/curso">
-                Ver catálogo completo&nbsp; →
-              </Button> */}
+              {courses.length > 3 ? (
+                <Stack direction="row" spacing={1}>
+                  <IconButton
+                    aria-label="Curso anterior"
+                    onClick={showPreviousCourse}
+                    size="small"
+                    color="secondary"
+                  >
+                    <ArrowBackIosNewRounded fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    aria-label="Curso siguiente"
+                    onClick={showNextCourse}
+                    size="small"
+                    color="secondary"
+                  >
+                    <ArrowForwardIosRounded fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ) : null}
             </Stack>
             <Grid container spacing={3}>
-              {courses.map((course) => (
-                <Grid key={course.title} size={{ xs: 12, md: 4 }}>
-                  <Card
-                    elevation={0}
-                    sx={{ height: '100%', border: '1px solid #e6e1ef', borderRadius: 4, overflow: 'hidden' }}
-                  >
-                    <CardMedia
-                      component="div"
-                      sx={{
-                        height: 185,
-                        position: 'relative',
-                        backgroundImage: `linear-gradient(0deg, ${course.color}b8, transparent 75%), url("/images/ditto-cursos.png")`,
-                        backgroundPosition: course.imagePosition,
-                        backgroundSize: 'cover',
-                      }}
+              {visibleCourses.map((course, index) => {
+                const meta = courseCardMeta[index % courseCardMeta.length];
+
+                return (
+                  <Grid key={course.id ?? course.title} size={{ xs: 12, md: 4 }}>
+                    <Card
+                      elevation={0}
+                      sx={{ height: '100%', border: '1px solid #e6e1ef', borderRadius: 4, overflow: 'hidden' }}
                     >
-                      <Chip
-                        label={course.category}
-                        size="small"
-                        sx={{ position: 'absolute', left: 16, bottom: 16, bgcolor: '#fff', fontWeight: 800 }}
-                      />
-                    </CardMedia>
-                    <CardContent sx={{ p: 3 }}>
-                      <Typography variant="h6" fontWeight={850}>
-                        {course.title}
-                      </Typography>
-                      <Typography color="text.secondary" sx={{ mt: 1, minHeight: 50 }}>
-                        {course.description}
-                      </Typography>
-                      <Stack direction="row" spacing={2} sx={{ mt: 2.5, color: 'text.secondary' }}>
-                        <Typography variant="caption">▤ {course.lessons}</Typography>
-                        <Typography variant="caption">◷ {course.duration}</Typography>
-                      </Stack>
-                      <Button component={RouterLink} to="/lista-curso" fullWidth variant="outlined" sx={{ mt: 2.5 }} color="secondary">
-                        Ver curso
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
+                      <CardMedia
+                        component="div"
+                        sx={{
+                          height: 185,
+                          position: 'relative',
+                          backgroundImage: `linear-gradient(0deg, ${meta.color}b8, transparent 75%), url("${course.thumbnail_url || '/images/ditto-cursos.png'}")`,
+                          backgroundPosition: meta.imagePosition,
+                          backgroundSize: 'cover',
+                        }}
+                      >
+                        <Chip
+                          label="Curso Ditto"
+                          size="small"
+                          sx={{ position: 'absolute', left: 16, bottom: 16, bgcolor: '#fff', fontWeight: 800 }}
+                        />
+                      </CardMedia>
+                      <CardContent sx={{ p: 3 }}>
+                        <Typography variant="h6" fontWeight={850}>
+                          {course.title}
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mt: 1, minHeight: 50 }}>
+                          {course.summary || course.description || 'Consulta el contenido del curso.'}
+                        </Typography>
+                        <Stack direction="row" spacing={2} sx={{ mt: 2.5, color: 'text.secondary' }}>
+                          <Typography variant="caption">▤ Curso</Typography>
+                          <Typography variant="caption">◷ A tu ritmo</Typography>
+                        </Stack>
+                        <Button onClick={() => openLoginModal(course.id)} fullWidth variant="outlined" sx={{ mt: 2.5 }} color="secondary">
+                          Ver curso
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
             </Grid>
           </Box>
         </Container>
@@ -560,6 +588,23 @@ export default function HomePage() {
           </Stack>
         </Paper>
       </Container>
+
+      <Dialog open={isLoginModalOpen} onClose={closeLoginModal} maxWidth="xs" fullWidth>
+        <DialogTitle fontWeight={850} sx={{ color: "#676767"}}>Inicia sesión</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Tienes que iniciar sesión para ver este curso.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={closeLoginModal} color="inherit">
+            Cancelar
+          </Button>
+          <Button onClick={goToLogin} variant="contained" color="secondary">
+            Ir al login
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
