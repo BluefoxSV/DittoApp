@@ -1,7 +1,5 @@
 const NavBar_data = [
     { label: "Inicio", to: "/" },
-    { label: "Productos", to: "/productos" },
-    { label: "Servicios", to: "/servicios" },
     { label: "Iniciar Sesion", to: "/login" },
 ]
 
