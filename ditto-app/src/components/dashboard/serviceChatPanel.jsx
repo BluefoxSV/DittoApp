@@ -14,19 +14,25 @@ export default function ServiceChatPanel({
   currentUserId,
   title,
   enabled,
+  active = true,
   requestStatus,
 }) {
   const [message, setMessage] = useState("");
   const endRef = useRef(null);
+  const shouldFetch = active && enabled && Boolean(requestId) && Boolean(currentUserId);
   const {
     data: messages = [],
     isLoading,
     isFetching,
     error: conversationError,
-  } = useGetRequestConversationQuery(requestId, {
-    skip: !enabled || !requestId || !currentUserId,
-    pollingInterval: 5000,
-  });
+  } = useGetRequestConversationQuery(
+    { requestId },
+    {
+      skip: !shouldFetch,
+      pollingInterval: shouldFetch ? 5000 : 0,
+      refetchOnMountOrArgChange: true,
+    },
+  );
   const [sendMessage, { isLoading: isSending, error: sendError }] =
     useSendRequestChatMessageMutation();
 
