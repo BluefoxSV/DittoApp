@@ -27,6 +27,13 @@ async def create_worker_profile(
     return await worker_service.create_worker_profile(user_id, data)
 
 
+@router.get("/user/{user_id}/profile", response_model=WorkerProfileRead)
+async def get_worker_profile_by_user(user_id: int, current_user: User = Depends(get_user)):
+    if current_user.id != user_id and current_user.role != UserRole.SUPPORT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    return await worker_service.get_worker_profile_by_user_id(user_id)
+
+
 @router.get("", response_model=list[WorkerProfileRead])
 async def list_workers(verified_only: bool = Query(default=False)):
     return await worker_service.list_worker_profiles(verified_only=verified_only)

@@ -6,6 +6,10 @@ export const usersApi = apiSlice.injectEndpoints({
       query: () => "/users/me",
       providesTags: ["User"],
     }),
+    getUserProfile: builder.query({
+      query: (userId) => `/users/${userId}/profile`,
+      providesTags: (_result, _error, userId) => [{ type: "User", id: userId }],
+    }),
     createProfile: builder.mutation({
       query: ({ userId, ...body }) => ({
         url: `/users/${userId}/profile`,
@@ -17,5 +21,5 @@ export const usersApi = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useGetMeQuery, useLazyGetMeQuery, useCreateProfileMutation } =
+export const { useGetMeQuery, useLazyGetMeQuery, useGetUserProfileQuery, useCreateProfileMutation } =
   usersApi;

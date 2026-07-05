@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Box, Typography, Avatar, Chip, LinearProgress } from "@mui/material";
+import { Box, Typography, Avatar, Chip, LinearProgress, Skeleton } from "@mui/material";
 import SidebarNav from "./sidebarNav";
 import MetricCard from "./metricCard";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 
 const NAV_ITEMS = [
   { key: "dashboard", icon: "dashboard", label: "Dashboard" },
@@ -11,8 +12,6 @@ const NAV_ITEMS = [
 ];
 
 const worker = {
-  name: "Carlos Méndez",
-  trade: "Electricista",
   experienceLabel: "Experiencia: oficial (3 años)",
   metrics: { completedCourses: 6, activeRequests: 3, rating: 4.8 },
   requests: [
@@ -37,6 +36,9 @@ const avatarSx = { bgcolor: "#BB6AF0", color: "#fff", width: 40, height: 40, fon
 
 export default function WorkerDashboard() {
   const [active, setActive] = useState("dashboard");
+  const { displayName, trade, initials, isLoading } = useCurrentUser();
+
+  const greetingLine = trade ? `${displayName} — ${trade}` : displayName;
 
   return (
     <Box sx={FONT} className="flex flex-col md:flex-row min-h-screen bg-paper text-left">
@@ -46,9 +48,13 @@ export default function WorkerDashboard() {
         <Box className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
           <Box>
             <Typography sx={FONT} className="text-sm text-gray-600">Hola,</Typography>
-            <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
-              {worker.name} — {worker.trade}
-            </Typography>
+            {isLoading ? (
+              <Skeleton variant="text" width={280} height={36} sx={{ mt: 0.5 }} />
+            ) : (
+              <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
+                {greetingLine}
+              </Typography>
+            )}
           </Box>
           <Box className="flex items-center gap-3">
             <Chip
@@ -56,7 +62,11 @@ export default function WorkerDashboard() {
               title="Basado en años de experiencia y certificaciones, no en idiomas"
               sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
             />
-            <Avatar sx={avatarSx}>CM</Avatar>
+            {isLoading ? (
+              <Skeleton variant="circular" width={40} height={40} />
+            ) : (
+              <Avatar sx={avatarSx}>{initials}</Avatar>
+            )}
           </Box>
         </Box>
 

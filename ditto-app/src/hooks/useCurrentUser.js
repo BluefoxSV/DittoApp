@@ -1,8 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
-import { useGetMeQuery } from "../store/api/usersApi";
+import { useGetMeQuery, useGetUserProfileQuery } from "../store/api/usersApi";
+import { useGetWorkersQuery } from "../store/api/workersApi";
 import { logout, setCredentials } from "../store/slices/authSlice";
+
+function getInitials(fullName) {
+  if (!fullName) return "?";
+
+  return fullName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 export function useCurrentUser() {
   const dispatch = useDispatch();
@@ -10,11 +22,35 @@ export function useCurrentUser() {
 
   const {
     data: fetchedUser,
-    isLoading,
-    isFetching,
-    isError,
-    error,
+    isLoading: isLoadingUser,
+    isFetching: isFetchingUser,
+    isError: isUserError,
+    error: userError,
   } = useGetMeQuery(undefined, { skip: !token });
+
+  const currentUser = user ?? fetchedUser ?? null;
+  const userId = currentUser?.id;
+  const isWorker = currentUser?.role === "worker";
+
+  const {
+    data: profile,
+    isLoading: isLoadingProfile,
+    isFetching: isFetchingProfile,
+    isError: isProfileError,
+    error: profileError,
+  } = useGetUserProfileQuery(userId, { skip: !userId });
+
+  const {
+    data: workers,
+    isLoading: isLoadingWorkers,
+    isFetching: isFetchingWorkers,
+    isError: isWorkersError,
+  } = useGetWorkersQuery(undefined, { skip: !userId || !isWorker });
+
+  const workerProfile = useMemo(
+    () => workers?.find((worker) => worker.user_id === userId) ?? null,
+    [workers, userId],
+  );
 
   useEffect(() => {
     if (fetchedUser) {
@@ -23,18 +59,41 @@ export function useCurrentUser() {
   }, [fetchedUser, dispatch]);
 
   useEffect(() => {
-    if (isError && error?.status === 401) {
+    if (isUserError && userError?.status === 401) {
       dispatch(logout());
     }
-  }, [isError, error, dispatch]);
+  }, [isUserError, userError, dispatch]);
 
-  const currentUser = user ?? fetchedUser ?? null;
   const isAuthenticated = Boolean(token);
+  const isLoadingUserData =
+    isAuthenticated && (!currentUser || isLoadingUser || isFetchingUser);
+  const isLoadingProfileData =
+    isAuthenticated &&
+    Boolean(userId) &&
+    !profile &&
+    (isLoadingProfile || isFetchingProfile) &&
+    !isProfileError;
+  const isLoadingWorkerProfileData =
+    isAuthenticated &&
+    isWorker &&
+    Boolean(userId) &&
+    !workerProfile &&
+    (isLoadingWorkers || isFetchingWorkers) &&
+    !isWorkersError;
+
+  const displayName = profile?.full_name ?? currentUser?.email ?? "";
+  const trade = workerProfile?.bio ?? null;
+  const initials = getInitials(displayName);
 
   return {
     user: currentUser,
+    profile,
+    workerProfile,
+    displayName,
+    trade,
+    initials,
     isAuthenticated,
-    isLoading: isAuthenticated && !currentUser && (isLoading || isFetching),
-    error: isError ? error : null,
+    isLoading: isLoadingUserData || isLoadingProfileData || isLoadingWorkerProfileData,
+    error: isUserError ? userError : isProfileError ? profileError : null,
   };
 }

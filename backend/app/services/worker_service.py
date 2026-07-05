@@ -29,6 +29,16 @@ async def get_worker_profile(worker_id: int) -> WorkerProfile:
     return profile
 
 
+async def get_worker_profile_by_user_id(user_id: int) -> WorkerProfile:
+    profile = await WorkerProfile.get_or_none(user_id=user_id)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Perfil de trabajador no encontrado",
+        )
+    return profile
+
+
 async def list_worker_profiles(verified_only: bool = False) -> list[WorkerProfile]:
     query = WorkerProfile.all()
     if verified_only:
