@@ -16,6 +16,7 @@ import {
 } from "../../store/api/serviceRequestsApi";
 import { useUpdateUserLocationMutation } from "../../store/api/usersApi";
 import ServiceRequestDialog from "./serviceRequestDialog";
+import ServiceIntakeChat from "./serviceIntakeChat";
 import {
   formatServiceDate,
   getApiErrorMessage,
@@ -41,6 +42,8 @@ export default function UserDashboard() {
   const userId = user?.id;
   const [description, setDescription] = useState("");
   const [dialogRequestId, setDialogRequestId] = useState(null);
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [pendingDescription, setPendingDescription] = useState("");
   const lastSyncedLocationRef = useRef("");
 
   const { coords, error: geoError, isLoading: isLoadingGeo, refresh: refreshGeo } =
@@ -77,23 +80,41 @@ export default function UserDashboard() {
   const dialogRequest =
     requests.find(({ id }) => id === dialogRequestId) ?? null;
 
-  const handleCreate = async (event) => {
+  const handleCreate = (event) => {
     event.preventDefault();
     const cleanDescription = description.trim();
     if (!cleanDescription || !userId) return;
 
+    setPendingDescription(cleanDescription);
+    setIntakeOpen(true);
+  };
+
+  const handleConfirmIntake = async (finalDescription) => {
+    if (!finalDescription.trim() || !userId) return;
+
     try {
       const request = await createRequest({
         userId,
-        description: cleanDescription,
+        description: finalDescription.trim(),
         latitude: coords?.latitude,
         longitude: coords?.longitude,
       }).unwrap();
       setDescription("");
+      setPendingDescription("");
+      setIntakeOpen(false);
       setDialogRequestId(request.id);
     } catch {
       // El error de la API se presenta debajo del buscador.
     }
+  };
+
+  const handleFallbackPublish = async (fallbackDescription) => {
+    await handleConfirmIntake(fallbackDescription);
+  };
+
+  const handleCloseIntake = () => {
+    setIntakeOpen(false);
+    setPendingDescription("");
   };
 
   if (isLoadingUser) {
@@ -231,6 +252,16 @@ export default function UserDashboard() {
           );
         })}
       </Box>
+
+      <ServiceIntakeChat
+        open={intakeOpen}
+        initialDescription={pendingDescription}
+        userId={userId}
+        onClose={handleCloseIntake}
+        onConfirm={handleConfirmIntake}
+        onFallbackPublish={handleFallbackPublish}
+        isPublishing={isCreating}
+      />
 
       <ServiceRequestDialog
         open={Boolean(dialogRequest)}
