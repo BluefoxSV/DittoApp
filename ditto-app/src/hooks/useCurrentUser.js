@@ -23,7 +23,6 @@ export function useCurrentUser() {
   const {
     data: fetchedUser,
     isLoading: isLoadingUser,
-    isFetching: isFetchingUser,
     isError: isUserError,
     error: userError,
   } = useGetMeQuery(undefined, { skip: !token });
@@ -35,7 +34,6 @@ export function useCurrentUser() {
   const {
     data: profile,
     isLoading: isLoadingProfile,
-    isFetching: isFetchingProfile,
     isError: isProfileError,
     error: profileError,
   } = useGetUserProfileQuery(userId, { skip: !userId });
@@ -43,7 +41,6 @@ export function useCurrentUser() {
   const {
     data: workerProfile,
     isLoading: isLoadingWorkerProfile,
-    isFetching: isFetchingWorkerProfile,
     isError: isWorkerProfileError,
   } = useGetWorkerProfileByUserIdQuery(userId, { skip: !userId || !isWorker });
 
@@ -61,19 +58,19 @@ export function useCurrentUser() {
 
   const isAuthenticated = Boolean(token);
   const isLoadingUserData =
-    isAuthenticated && (!currentUser || isLoadingUser || isFetchingUser);
+    isAuthenticated && !currentUser && isLoadingUser;
   const isLoadingProfileData =
     isAuthenticated &&
     Boolean(userId) &&
     !profile &&
-    (isLoadingProfile || isFetchingProfile) &&
+    isLoadingProfile &&
     !isProfileError;
   const isLoadingWorkerProfileData =
     isAuthenticated &&
     isWorker &&
     Boolean(userId) &&
     !workerProfile &&
-    (isLoadingWorkerProfile || isFetchingWorkerProfile) &&
+    isLoadingWorkerProfile &&
     !isWorkerProfileError;
 
   const displayName = profile?.full_name ?? currentUser?.email ?? "";
