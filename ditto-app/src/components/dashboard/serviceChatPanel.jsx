@@ -25,7 +25,6 @@ export default function ServiceChatPanel({
     isLoading,
     isFetching,
     error: conversationError,
-<<<<<<< Updated upstream
   } = useGetRequestConversationQuery(
     { requestId },
     {
@@ -33,11 +32,6 @@ export default function ServiceChatPanel({
       pollingInterval: shouldFetch ? 5000 : 0,
       refetchOnMountOrArgChange: true,
     },
-=======
-  } = useGetConversationQuery(
-    { userId: currentUserId, otherUserId },
-    { skip: !enabled || !currentUserId || !otherUserId, pollingInterval: 5000 },
->>>>>>> Stashed changes
   );
   const [sendMessage, { isLoading: isSending, error: sendError }] =
     useSendChatMessageMutation();
