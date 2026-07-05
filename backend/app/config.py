@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     elevenlabs_use_signed_url: bool = False
     elevenlabs_intake_prompt: str | None = None
     elevenlabs_first_message: str | None = None
-    elevenlabs_use_prompt_override: bool = True
+    elevenlabs_use_prompt_override: bool = False
     elevenlabs_min_follow_up_questions: int = 3
 
 

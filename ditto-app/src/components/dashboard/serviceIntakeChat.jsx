@@ -23,11 +23,15 @@ const DITTOAPP_SESSION_CONTEXT =
   "Modo entrevista DittoApp: el cliente PUBLICA una solicitud para que un trabajador especializado vaya a su domicilio. Prohibido diagnosticar, dar tips, listas de causas o soluciones caseras.";
 
 function buildIntakePayload(description) {
-  return `[PUBLICAR SOLICITUD EN DITTOAPP]
-El cliente quiere publicar para que un ESPECIALISTA de DittoApp venga en persona. Tu rol es entrevistador, NO técnico. ${DITTOAPP_SESSION_CONTEXT}
+  return description.trim();
+}
 
-Problema del cliente:
-${description.trim()}`;
+function connectionStatusLabel(status, isConnecting) {
+  if (isConnecting) return "Conectando...";
+  if (status === "connected") return "Conectado";
+  if (status === "connecting") return "Conectando...";
+  if (status === "disconnected") return "Desconectado";
+  return status || "Desconocido";
 }
 
 function ThinkingIndicator() {
@@ -121,18 +125,38 @@ function IntakeChatBody({
   const endRef = useRef(null);
   const connectAttemptRef = useRef(0);
   const summaryNudgeRef = useRef(false);
+  const sendUserMessageRef = useRef(null);
+  const sendContextualUpdateRef = useRef(null);
+  const initialDescriptionRef = useRef(initialDescription);
 
   const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
 
-  const sendInitialMessage = (sendFn) => {
-    if (initialSentRef.current || !initialDescription || typeof sendFn !== "function") {
-      return false;
+  const trySendInitialMessage = useCallback((attempt = 0) => {
+    if (initialSentRef.current || !initialDescriptionRef.current) return;
+
+    const sendFn = sendUserMessageRef.current;
+    if (typeof sendFn !== "function") {
+      if (attempt < 12) {
+        window.setTimeout(() => trySendInitialMessage(attempt + 1), 200);
+      }
+      return;
     }
-    setIsWaitingForAgent(true);
-    sendFn(buildIntakePayload(initialDescription));
-    initialSentRef.current = true;
-    return true;
-  };
+
+    try {
+      sendFn(buildIntakePayload(initialDescriptionRef.current));
+      initialSentRef.current = true;
+      setIsWaitingForAgent(true);
+      window.setTimeout(() => {
+        sendContextualUpdateRef.current?.(DITTOAPP_SESSION_CONTEXT);
+      }, 100);
+    } catch {
+      if (attempt < 12) {
+        window.setTimeout(() => trySendInitialMessage(attempt + 1), 200);
+      } else {
+        setConnectionError("No se pudo enviar el mensaje inicial al asistente.");
+      }
+    }
+  }, [setConnectionError]);
 
   const appendAgentText = (text) => {
     const cleanText = text.trim();
@@ -224,6 +248,17 @@ function IntakeChatBody({
     onConnect: () => {
       setConnectionError(null);
       setIsConnecting(false);
+      window.setTimeout(() => trySendInitialMessage(), 250);
+    },
+    onStatusChange: (newStatus) => {
+      if (newStatus === "connected") {
+        setIsConnecting(false);
+        window.setTimeout(() => trySendInitialMessage(), 250);
+      }
+    },
+    onDisconnect: () => {
+      setIsAgentTyping(false);
+      setIsWaitingForAgent(false);
     },
     onError: (error) => {
       const message =
@@ -243,7 +278,7 @@ function IntakeChatBody({
   const { startSession, endSession, sendUserMessage, sendUserActivity, sendContextualUpdate, status } =
     conversation;
   const isConnected = status === "connected";
-  const canSendMessages = isConnected && !isConnecting;
+  const canSendMessages = isConnected;
   const showThinking = isAgentTyping || isWaitingForAgent || messages.some(({ streaming }) => streaming);
   const followUpCount = useMemo(
     () => Math.max(0, messages.filter(({ role }) => role === "user").length - 1),
@@ -252,18 +287,20 @@ function IntakeChatBody({
   const canRequestSummary = followUpCount >= minFollowUp && !finalSummary;
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, finalSummary]);
+    initialDescriptionRef.current = initialDescription;
+  }, [initialDescription]);
 
   useEffect(() => {
-    if (!canSendMessages) return undefined;
+    sendUserMessageRef.current = sendUserMessage;
+  }, [sendUserMessage]);
 
-    const timer = window.setTimeout(() => {
-      sendInitialMessage(sendUserMessage);
-    }, 300);
+  useEffect(() => {
+    sendContextualUpdateRef.current = sendContextualUpdate;
+  }, [sendContextualUpdate]);
 
-    return () => window.clearTimeout(timer);
-  }, [canSendMessages, initialDescription, sendUserMessage]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, finalSummary, showThinking]);
 
   useEffect(() => {
     if (!isWaitingForAgent) return undefined;
@@ -316,9 +353,10 @@ function IntakeChatBody({
 
         const sessionOptions = {
           userId: userId ? String(userId) : undefined,
+          textOnly: true,
         };
 
-        if (config.use_prompt_override !== false && config.prompt_override) {
+        if (config.use_prompt_override === true && config.prompt_override) {
           sessionOptions.overrides = {
             conversation: { textOnly: true },
             agent: {
@@ -432,15 +470,30 @@ function IntakeChatBody({
             Respondemos unas preguntas para que un especialista de DittoApp vea tu pedido y vaya a
             ayudarte ({followUpCount}/{minFollowUp} mínimo).
           </Typography>
+          <Typography
+            sx={FONT}
+            className={`text-[11px] mt-1 font-semibold ${
+              isConnected ? "text-emerald-700" : "text-amber-700"
+            }`}
+          >
+            {connectionStatusLabel(status, isConnecting)}
+          </Typography>
         </Box>
 
-        {connectionError && !isConnected ? (
+        {connectionError ? (
           <Alert severity="error" className="mx-4 mt-4">
             {connectionError}
           </Alert>
         ) : null}
 
-        {connectionError && !isConnected ? (
+        {!isConnected && !isConnecting && !connectionError ? (
+          <Alert severity="warning" className="mx-4 mt-4">
+            No hay conexión con el asistente. Cierra y vuelve a abrir, o publica con la descripción
+            original.
+          </Alert>
+        ) : null}
+
+        {connectionError ? (
           <Box className="mx-4 mb-3">
             <Button
               variant="outlined"
