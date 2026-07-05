@@ -24,7 +24,6 @@ export const usersApi = apiSlice.injectEndpoints({
         method: "PATCH",
         body: { latitude, longitude },
       }),
-      invalidatesTags: ["User"],
     }),
   }),
 });
