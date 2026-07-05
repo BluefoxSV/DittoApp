@@ -19,6 +19,12 @@ import { getApiErrorMessage } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
+function endConversationSession(endSession) {
+  if (typeof endSession === "function") {
+    endSession();
+  }
+}
+
 function extractMessageText(message) {
   if (typeof message === "string") return message;
   if (!message || typeof message !== "object") return "";
@@ -150,7 +156,7 @@ function IntakeChatBody({
         setIsConnecting(false);
       } catch (error) {
         if (cancelled) return;
-        if (error?.status === 503) {
+        if (error?.status === 503 || error?.status === 502) {
           setElevenLabsUnavailable(true);
         } else {
           setConnectionError(
@@ -165,7 +171,7 @@ function IntakeChatBody({
 
     return () => {
       cancelled = true;
-      endSession().catch(() => {});
+      endConversationSession(endSession);
     };
   }, [
     initialDescription,
@@ -178,8 +184,8 @@ function IntakeChatBody({
     setElevenLabsUnavailable,
   ]);
 
-  const handleClose = async () => {
-    await endSession().catch(() => {});
+  const handleClose = () => {
+    endConversationSession(endSession);
     onClose();
   };
 
@@ -235,6 +241,24 @@ function IntakeChatBody({
           <Alert severity="error" className="mx-4 mt-4">
             {connectionError}
           </Alert>
+        ) : null}
+
+        {connectionError ? (
+          <Box className="mx-4 mb-3">
+            <Button
+              variant="outlined"
+              fullWidth
+              disabled={isPublishing}
+              onClick={() => onFallbackPublish(initialDescription)}
+              sx={{ ...FONT, textTransform: "none", borderRadius: 3 }}
+            >
+              {isPublishing ? (
+                <CircularProgress size={18} />
+              ) : (
+                "Publicar con la descripción original"
+              )}
+            </Button>
+          </Box>
         ) : null}
 
         <Box className="flex-1 min-h-[280px] max-h-[50vh] overflow-y-auto px-4 py-5 space-y-3 bg-gray-50">
@@ -376,7 +400,7 @@ export default function ServiceIntakeChat({
       onClose={handleClose}
       fullWidth
       maxWidth="md"
-      PaperProps={{ sx: { borderRadius: 4, ...FONT } }}
+      slotProps={{ paper: { sx: { borderRadius: 4, ...FONT } } }}
     >
       <DialogTitle className="flex items-center justify-between pr-2">
         <Typography sx={FONT} className="text-lg font-bold text-gray-900">

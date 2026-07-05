@@ -23,9 +23,18 @@ async def get_signed_url() -> str:
         )
 
     if response.status_code != 200:
+        detail = "No se pudo obtener la URL firmada de ElevenLabs."
+        try:
+            body = response.json()
+            if isinstance(body.get("detail"), str):
+                detail = body["detail"]
+            elif isinstance(body.get("detail"), dict) and body["detail"].get("message"):
+                detail = body["detail"]["message"]
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="No se pudo obtener la URL firmada de ElevenLabs.",
+            detail=detail,
         )
 
     signed_url = response.json().get("signed_url")
