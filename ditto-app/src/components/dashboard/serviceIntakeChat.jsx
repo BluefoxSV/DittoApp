@@ -11,6 +11,8 @@ import {
   IconButton,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 
@@ -150,6 +152,7 @@ function IntakeChatBody({
   initialDescription,
   userId,
   coords,
+  isMobile,
   onClose,
   onConfirm,
   onFallbackPublish,
@@ -551,7 +554,14 @@ function IntakeChatBody({
 
   return (
     <>
-      <DialogContent className="p-0 flex flex-col" sx={{ minHeight: 420 }}>
+      <DialogContent
+        className="p-0 flex flex-col"
+        sx={{
+          minHeight: isMobile ? 0 : 420,
+          flex: isMobile ? 1 : undefined,
+          overflow: isMobile ? "hidden" : undefined,
+        }}
+      >
         <Box className="px-5 py-4 border-b border-gray-200 bg-paper">
           <Typography sx={FONT} className="text-sm font-bold text-gray-900">
             Publicemos tu solicitud
@@ -631,7 +641,11 @@ function IntakeChatBody({
           </Box>
         ) : null}
 
-        <Box className="flex-1 min-h-[280px] max-h-[50vh] overflow-y-auto px-4 py-5 space-y-3 bg-gray-50">
+        <Box
+          className={`flex-1 overflow-y-auto px-4 py-5 space-y-3 bg-gray-50 ${
+            isMobile ? "min-h-0" : "min-h-[280px] max-h-[50vh]"
+          }`}
+        >
           {isConnecting && messages.length === 0 ? (
             <Box className="h-full flex items-center justify-center gap-2">
               <CircularProgress size={24} />
@@ -723,7 +737,10 @@ function IntakeChatBody({
         </Box>
       </DialogContent>
 
-      <DialogActions className="px-6 pb-5">
+      <DialogActions
+        className="px-6 pb-5"
+        sx={isMobile ? { pb: "max(20px, env(safe-area-inset-bottom))" } : undefined}
+      >
         <Button onClick={handleClose} sx={{ ...FONT, textTransform: "none" }}>
           Cancelar
         </Button>
@@ -796,6 +813,9 @@ export default function ServiceIntakeChat({
     [registerSummary],
   );
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const handleClose = () => {
     autoPublishRef.current = false;
     setFinalSummary("");
@@ -807,12 +827,32 @@ export default function ServiceIntakeChat({
   return (
     <Dialog
       open={open}
-      onClose={handleClose}
+      fullScreen={isMobile}
+      onClose={(_, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        handleClose();
+      }}
       fullWidth
       maxWidth="md"
-      slotProps={{ paper: { sx: { borderRadius: 4, ...FONT } } }}
+      slotProps={{
+        paper: {
+          sx: {
+            ...FONT,
+            borderRadius: isMobile ? 0 : 4,
+            ...(isMobile && {
+              height: "100%",
+              maxHeight: "100%",
+              display: "flex",
+              flexDirection: "column",
+            }),
+          },
+        },
+      }}
     >
-      <DialogTitle className="flex items-center justify-between pr-2">
+      <DialogTitle
+        className="flex items-center justify-between pr-2"
+        sx={isMobile ? { pt: "max(16px, env(safe-area-inset-top))" } : undefined}
+      >
         <Typography sx={FONT} className="text-lg font-bold text-gray-900">
           Entrevista de solicitud
         </Typography>
@@ -828,6 +868,7 @@ export default function ServiceIntakeChat({
             initialDescription={initialDescription}
             userId={userId}
             coords={coords}
+            isMobile={isMobile}
             onClose={handleClose}
             onConfirm={onConfirm}
             onFallbackPublish={onFallbackPublish}
