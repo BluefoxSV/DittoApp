@@ -7,6 +7,27 @@ from app.services.user_service import get_user_by_id
 from app.utils.geo import haversine_km
 
 
+def _worker_full_name(worker: WorkerProfile) -> str | None:
+    user = getattr(worker, "user", None)
+    if user is None:
+        return None
+    profile = getattr(user, "profile", None)
+    return profile.full_name if profile else None
+
+
+def _serialize_worker(
+    worker: WorkerProfile,
+    *,
+    distance_km: float | None = None,
+) -> WorkerProfileWithDistance:
+    return WorkerProfileWithDistance.model_validate(worker).model_copy(
+        update={
+            "full_name": _worker_full_name(worker),
+            "distance_km": distance_km,
+        }
+    )
+
+
 async def create_worker_profile(user_id: int, data: WorkerProfileCreate) -> WorkerProfile:
     user = await get_user_by_id(user_id)
     if user.role != UserRole.WORKER:
@@ -50,24 +71,20 @@ async def list_worker_profiles(
     query = WorkerProfile.all()
     if verified_only:
         query = query.filter(is_verified=True)
-    workers = await query
+    workers = await query.prefetch_related("user__profile")
 
     if latitude is None or longitude is None:
-        return [WorkerProfileWithDistance.model_validate(worker) for worker in workers]
+        return [_serialize_worker(worker) for worker in workers]
 
     with_distance: list[WorkerProfileWithDistance] = []
     without_location: list[WorkerProfileWithDistance] = []
     for worker in workers:
         if worker.latitude is None or worker.longitude is None:
-            without_location.append(WorkerProfileWithDistance.model_validate(worker))
+            without_location.append(_serialize_worker(worker))
             continue
         distance = haversine_km(latitude, longitude, worker.latitude, worker.longitude)
         if distance <= radius_km:
-            with_distance.append(
-                WorkerProfileWithDistance.model_validate(worker).model_copy(
-                    update={"distance_km": round(distance, 2)}
-                )
-            )
+            with_distance.append(_serialize_worker(worker, distance_km=round(distance, 2)))
 
     with_distance.sort(key=lambda item: item.distance_km or float("inf"))
     return with_distance + without_location
