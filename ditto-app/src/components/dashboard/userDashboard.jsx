@@ -36,6 +36,7 @@ const avatarSx = {
 };
 
 function workerLabel(worker) {
+  if (!worker) return "Profesional no asignado";
   return worker?.bio?.trim() || `Profesional #${worker?.id ?? ""}`;
 }
 
@@ -117,16 +118,17 @@ export default function UserDashboard() {
   const handleCreate = async (event) => {
     event.preventDefault();
     const cleanDescription = description.trim();
-    if (!cleanDescription || !selectedWorkerId || !userId) return;
+    if (!cleanDescription || !userId) return;
+
+    const payload = {
+      userId,
+      workerId: selectedWorkerId,
+      description: cleanDescription,
+    };
+    console.log("Enviando solicitud de servicio:", payload);
 
     try {
-      const request = await createRequest({
-        userId,
-        workerId: selectedWorkerId,
-        description: cleanDescription,
-        latitude: coords?.latitude,
-        longitude: coords?.longitude,
-      }).unwrap();
+      const request = await createRequest(payload).unwrap();
       setDescription("");
       setDialogRequestId(request.id);
     } catch {
@@ -179,7 +181,7 @@ export default function UserDashboard() {
         className="bg-primary-500 rounded-2xl p-5 mb-8"
       >
         <Typography sx={FONT} className="text-white text-sm font-medium mb-3">
-          Escribe tu necesidad y elige un trabajador {coords ? "cercano" : "verificado"}
+          Escribe tu necesidad. Elegir un trabajador es opcional; también puedes recibir una asignación automática.
         </Typography>
         <Box className="bg-paper rounded-xl px-3 flex items-center gap-2">
           <i className="ti ti-search text-gray-900 flex-shrink-0 text-lg" aria-hidden="true" />
@@ -195,7 +197,7 @@ export default function UserDashboard() {
           />
           <Button
             type="submit"
-            disabled={!description.trim() || !selectedWorkerId || isCreating}
+            disabled={!description.trim() || isCreating}
             sx={{
               ...FONT,
               color: "#874cad",
