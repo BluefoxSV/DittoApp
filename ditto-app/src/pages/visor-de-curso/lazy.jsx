@@ -7,6 +7,10 @@ const VisorDeCurso = lazy(() => import('./VisorDeCurso.jsx'));
 const visorDeCursoLazy = {
   routes: [
     {
+      path: '/curso/:courseId/detalles',
+      element: <VisorDeCurso />,
+    },
+    {
       path: '/curso/:courseId',
       element: <VisorDeCurso />,
     },

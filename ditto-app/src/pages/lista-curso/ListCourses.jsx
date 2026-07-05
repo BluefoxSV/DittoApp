@@ -22,7 +22,6 @@ import {
   useGetCoursesQuery,
   useGetWorkerCourseEnrollmentsQuery,
 } from "../../store/api/coursesApi";
-import CourseDetailsDialog from "./CourseDetailsDialog";
 import CreateCourseDialog from "./CreateCourseDialog";
 
 const FALLBACK_IMAGE = "/images/ditto-cursos.png";
@@ -35,7 +34,6 @@ function getApiError(error, fallback) {
 export default function ListCourses() {
   const { user, workerProfile } = useCurrentUser();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [detailsCourseId, setDetailsCourseId] = useState(null);
   const workerId = workerProfile?.id;
   const isWorker = user?.role === "worker";
   const canCreateCourses = Boolean(user);
@@ -57,8 +55,6 @@ export default function ListCourses() {
   const enrolledCourseIds = new Set(
     enrollments.map((enrollment) => enrollment.course_id),
   );
-  const detailsCourse =
-    courses.find((course) => course.id === detailsCourseId) ?? null;
 
   const handleEnrollment = async (courseId) => {
     if (!workerId || isEnrolling) return;
@@ -297,7 +293,8 @@ export default function ListCourses() {
                       </Button>
                     ) : (
                       <Button
-                        onClick={() => setDetailsCourseId(course.id)}
+                        component={RouterLink}
+                        to={`/curso/${course.id}/detalles`}
                         size="small"
                         variant="outlined"
                         color="secondary"
@@ -316,11 +313,6 @@ export default function ListCourses() {
       <CreateCourseDialog
         open={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
-      />
-      <CourseDetailsDialog
-        course={detailsCourse}
-        open={Boolean(detailsCourse)}
-        onClose={() => setDetailsCourseId(null)}
       />
     </Box>
   );

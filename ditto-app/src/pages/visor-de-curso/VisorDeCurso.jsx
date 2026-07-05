@@ -14,7 +14,12 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutlineOutlined";
 import { useState } from "react";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
 import {
   useGetCourseLessonsQuery,
@@ -45,8 +50,125 @@ const normalizeYouTubeUrl = (url) => {
   return url;
 };
 
+const formatCourseDate = (value) => {
+  if (!value) return "";
+
+  return new Intl.DateTimeFormat("es-SV", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
+};
+
+function CourseOverview({ course, lessonCount }) {
+  return (
+    <Box>
+      <Typography
+        variant="overline"
+        sx={{ color: "#8f22af", fontWeight: 900, letterSpacing: 1.4 }}
+      >
+        Información del curso
+      </Typography>
+      <Typography
+        variant="h3"
+        component="h2"
+        sx={{
+          color: "#111827",
+          fontWeight: 900,
+          mt: 0.5,
+          mb: 2,
+          letterSpacing: 0,
+        }}
+      >
+        {course.title}
+      </Typography>
+
+      {course.summary ? (
+        <Typography
+          sx={{
+            color: "#8f22af",
+            fontSize: { xs: 17, md: 20 },
+            fontWeight: 800,
+            lineHeight: 1.6,
+            mb: 2,
+          }}
+        >
+          {course.summary}
+        </Typography>
+      ) : null}
+      <Typography
+        sx={{
+          maxWidth: 920,
+          color: "#4b5563",
+          fontSize: { xs: 16, md: 18 },
+          lineHeight: 1.8,
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {course.description || "Este curso todavía no tiene una descripción."}
+      </Typography>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "minmax(280px, 0.9fr) 1.1fr" },
+          gap: 3,
+          mt: 4,
+          maxWidth: 1000,
+        }}
+      >
+        <Box
+          component="img"
+          src={course.thumbnail_url || "/images/ditto-cursos.png"}
+          alt={course.title}
+          sx={{
+            width: "100%",
+            height: { xs: 240, md: 330 },
+            objectFit: "cover",
+            borderRadius: 3,
+            border: "1px solid #e4d7ef",
+            boxShadow: "0 18px 40px rgba(17,24,39,0.12)",
+          }}
+        />
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr 1fr", md: "1fr" },
+            gap: 2,
+            alignContent: "start",
+          }}
+        >
+          <Box sx={{ bgcolor: "#f3e8ff", borderRadius: 3, p: 3 }}>
+            <Typography sx={{ color: "#6b7280", fontSize: 13 }}>
+              Lecciones disponibles
+            </Typography>
+            <Typography sx={{ color: "#8f22af", fontSize: 28, fontWeight: 900, mt: 0.5 }}>
+              {lessonCount}
+            </Typography>
+          </Box>
+          <Box sx={{ bgcolor: "#f3e8ff", borderRadius: 3, p: 3 }}>
+            <Typography sx={{ color: "#6b7280", fontSize: 13 }}>
+              Publicado
+            </Typography>
+            <Typography sx={{ color: "#8f22af", fontWeight: 900, mt: 0.5 }}>
+              {formatCourseDate(course.created_at)}
+            </Typography>
+          </Box>
+          <Chip
+            label={course.is_active ? "Curso disponible" : "Curso no disponible"}
+            color={course.is_active ? "secondary" : "default"}
+            sx={{ justifySelf: "start", fontWeight: 800 }}
+          />
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 export default function VisorDeCurso() {
   const { courseId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const parsedCourseId = Number(courseId);
   const hasValidCourseId = Number.isInteger(parsedCourseId) && parsedCourseId > 0;
   const [selectedLessonId, setSelectedLessonId] = useState(null);
@@ -65,6 +187,7 @@ export default function VisorDeCurso() {
     lessons.find(({ id }) => id === selectedLessonId) ?? lessons[0] ?? null;
   const isLoading = isLoadingCourse || isLoadingLessons;
   const error = courseError || lessonsError;
+  const isCourseOverview = location.pathname.endsWith("/detalles");
   const nextLessonOrder =
     lessons.reduce((highest, lesson) => Math.max(highest, lesson.order), -1) + 1;
 
@@ -199,7 +322,10 @@ export default function VisorDeCurso() {
                   Temas del curso
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#6b7280" }}>
-                  {lessons.length} lecciones disponibles
+                  {lessons.length}{" "}
+                  {lessons.length === 1
+                    ? "lección disponible"
+                    : "lecciones disponibles"}
                 </Typography>
               </Box>
             </Stack>
@@ -225,13 +351,87 @@ export default function VisorDeCurso() {
                 },
               }}
             >
+              <Button
+                onClick={() => navigate(`/curso/${parsedCourseId}/detalles`)}
+                variant="outlined"
+                sx={{
+                  width: "100%",
+                  display: "grid",
+                  gridTemplateColumns: "38px minmax(0, 1fr) 24px",
+                  textTransform: "none",
+                  textAlign: "left",
+                  alignItems: "center",
+                  gap: 1.25,
+                  p: 1.5,
+                  minHeight: 74,
+                  borderRadius: 2,
+                  borderColor: isCourseOverview ? "#a72bc1" : "#e4d7ef",
+                  bgcolor: isCourseOverview ? "#a72bc1" : "#fff",
+                  color: isCourseOverview ? "#fff" : "#1f2937",
+                  boxShadow: isCourseOverview
+                    ? "0 12px 24px rgba(167,43,193,0.2)"
+                    : "none",
+                  "&:hover": {
+                    borderColor: "#a72bc1",
+                    bgcolor: isCourseOverview
+                      ? "#9322ad"
+                      : "rgba(167,43,193,0.06)",
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 2,
+                    display: "grid",
+                    placeItems: "center",
+                    bgcolor: isCourseOverview
+                      ? "rgba(255,255,255,0.2)"
+                      : "rgba(167,43,193,0.1)",
+                    color: "inherit",
+                  }}
+                >
+                  <MenuBookOutlinedIcon fontSize="small" />
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: "inherit", fontWeight: 900, lineHeight: 1.25 }}
+                  >
+                    Información del curso
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: "block",
+                      color: isCourseOverview
+                        ? "rgba(255,255,255,0.78)"
+                        : "#7c3aa4",
+                      mt: 0.5,
+                    }}
+                  >
+                    Resumen y descripción
+                  </Typography>
+                </Box>
+                {isCourseOverview ? (
+                  <CheckCircleOutlineIcon fontSize="small" />
+                ) : (
+                  <ChevronRightIcon fontSize="small" />
+                )}
+              </Button>
+
               {lessons.map((lesson, index) => {
-                const isActive = lesson.id === selectedLesson?.id;
+                const isActive =
+                  !isCourseOverview && lesson.id === selectedLesson?.id;
 
                 return (
                   <Button
                     key={lesson.id}
-                    onClick={() => setSelectedLessonId(lesson.id)}
+                    onClick={() => {
+                      setSelectedLessonId(lesson.id);
+                      navigate(`/curso/${parsedCourseId}`);
+                    }}
                     variant="outlined"
                     sx={{
                       width: "100%",
@@ -360,7 +560,11 @@ export default function VisorDeCurso() {
               bgcolor: "#f5f7fb",
             }}
           >
-            <Stack
+            {isCourseOverview ? (
+              <CourseOverview course={course} lessonCount={lessons.length} />
+            ) : (
+              <>
+                <Stack
               direction={{ xs: "column", md: "row" }}
               justifyContent="space-between"
               alignItems={{ xs: "flex-start", md: "center" }}
@@ -464,7 +668,9 @@ export default function VisorDeCurso() {
                   Este curso todavía no tiene lecciones publicadas.
                 </Box>
               )}
-            </Box>
+                </Box>
+              </>
+            )}
           </Box>
         </Box>
       </Container>
