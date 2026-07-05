@@ -28,6 +28,30 @@ docker compose up -d
 
 3. Escanea el QR en http://localhost:3000
 
+## Reverse proxy (nginx + subpath `/gowa`)
+
+GoWA debe conocer el subpath para que CSS, JS y APIs usen rutas correctas:
+
+```yaml
+environment:
+  APP_BASE_PATH: /gowa
+  APP_TRUSTED_PROXIES: 0.0.0.0/0
+```
+
+Nginx **sin quitar** el prefijo (GoWA lo espera con `APP_BASE_PATH`):
+
+```nginx
+location /gowa {
+    proxy_pass http://127.0.0.1:7000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Si quitas `/gowa` en nginx **y** no configuras `APP_BASE_PATH`, la UI carga sin estilos porque el navegador pide `/assets/...` en la raíz del dominio (DittoApp) en lugar de `/gowa/assets/...`.
+
 ## Configuración del webhook
 
 GoWA envía mensajes entrantes al backend:
@@ -48,7 +72,7 @@ El secreto (`secret`) debe coincidir con `GOWA_WEBHOOK_SECRET` en `backend/.env`
 ## Variables en backend/.env
 
 ```env
-GOWA_BASE_URL=http://localhost:3000
+GOWA_BASE_URL=http://localhost:3000/gowa
 GOWA_WEBHOOK_SECRET=secret
 N8N_WEBHOOK_URL=https://tu-instancia.app.n8n.cloud/webhook/whatsapp-incoming
 WHATSAPP_API_KEY=clave-para-n8n
