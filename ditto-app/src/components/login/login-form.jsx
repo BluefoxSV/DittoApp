@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import {
   Box,
@@ -237,6 +237,8 @@ export default function LoginForm() {
                     </Typography>
 
                     <Button
+                      component={RouterLink}
+                      to="/register"
                       type="button"
                       variant="outlined"
                       sx={{

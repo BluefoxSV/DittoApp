@@ -2,6 +2,7 @@ import homepageLazy from './pages/homepage/lazy.jsx';
 import visorDeCursoLazy from './pages/visor-de-curso/lazy.jsx';
 import LoginPages from './pages/loginPages/loginPages.jsx';
 import LoginPageLazy from './pages/loginPages/lazy.jsx';
+import registerLazy from './pages/register/lazy.jsx';
 import dashboardsLazy from './pages/dashboards/lazy.jsx';
 import LazyCurso from './pages/lista-curso/LazyCurso.jsx';
 
@@ -18,6 +19,7 @@ const lazyMain = {
     ...homepageLazy.routes,
     ...visorDeCursoLazy.routes,
     ...LoginPageLazy.routes,
+    ...registerLazy.routes,
     ...profileLazy.routes,
     ...dashboardsLazy.routes,
     ...LazyCurso.routes,

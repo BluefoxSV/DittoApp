@@ -6,7 +6,16 @@ export const usersApi = apiSlice.injectEndpoints({
       query: () => "/users/me",
       providesTags: ["User"],
     }),
+    createProfile: builder.mutation({
+      query: ({ userId, ...body }) => ({
+        url: `/users/${userId}/profile`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
   }),
 });
 
-export const { useGetMeQuery, useLazyGetMeQuery } = usersApi;
+export const { useGetMeQuery, useLazyGetMeQuery, useCreateProfileMutation } =
+  usersApi;
