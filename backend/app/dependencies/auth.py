@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.models.user import User, UserRole
 from app.services.auth_service import decode_access_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 async def get_user(token: str = Depends(oauth2_scheme)) -> User:
