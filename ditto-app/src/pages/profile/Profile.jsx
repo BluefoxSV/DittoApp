@@ -96,7 +96,7 @@ const BASE_FIELDS = [
   { key: 'phone', label: 'Teléfono', type: 'tel', autoComplete: 'tel' },
   {
     key: 'birthDate',
-    label: 'Fecha de nacimiento',
+    label: '',
     type: 'date',
     InputLabelProps: { shrink: true },
   },

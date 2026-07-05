@@ -8,6 +8,7 @@ import GuardedRoute from './components/auth/GuardedRoute';
 import Navbar from './components/layout/navBar';
 import Footer from './components/layout/footer';
 import SidebarNav from './components/layout/sidebarNav';
+import VoiceAssistant from './components/voice/voiceAssistant';
 
 // Rutas donde el sidebar NO se muestra (navbar y footer siguen visibles siempre).
 const RUTAS_SIN_SIDEBAR = ['/', '/login', '/register', '/registro'];
@@ -62,6 +63,7 @@ function AppRoutes() {
       )}
 
       <Footer />
+      <VoiceAssistant />
     </Box>
   );
 }

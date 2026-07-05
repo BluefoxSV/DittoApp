@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, TextField, Typography } from "@mui/material";
 
-import {
-  useGetRequestConversationQuery,
-  useSendRequestChatMessageMutation,
-} from "../../store/api/chatApi";
+import { useGetConversationQuery, useSendChatMessageMutation } from "../../store/api/chatApi";
 import { formatServiceDate, getApiErrorMessage } from "./serviceRequestUi";
+import WaitingForAcceptance from "../../components/dashboard/waitingForAcceptance";
+
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
 export default function ServiceChatPanel({
-  requestId,
   currentUserId,
+  otherUserId,
   title,
   enabled,
   active = true,
   requestStatus,
+  waitingForWorker = false,
 }) {
   const [message, setMessage] = useState("");
   const endRef = useRef(null);
@@ -25,6 +25,7 @@ export default function ServiceChatPanel({
     isLoading,
     isFetching,
     error: conversationError,
+<<<<<<< Updated upstream
   } = useGetRequestConversationQuery(
     { requestId },
     {
@@ -32,9 +33,14 @@ export default function ServiceChatPanel({
       pollingInterval: shouldFetch ? 5000 : 0,
       refetchOnMountOrArgChange: true,
     },
+=======
+  } = useGetConversationQuery(
+    { userId: currentUserId, otherUserId },
+    { skip: !enabled || !currentUserId || !otherUserId, pollingInterval: 5000 },
+>>>>>>> Stashed changes
   );
   const [sendMessage, { isLoading: isSending, error: sendError }] =
-    useSendRequestChatMessageMutation();
+    useSendChatMessageMutation();
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,10 +49,14 @@ export default function ServiceChatPanel({
   const handleSubmit = async (event) => {
     event.preventDefault();
     const content = message.trim();
-    if (!content || isSending || !requestId) return;
+    if (!content || isSending) return;
 
     try {
-      await sendMessage({ requestId, content }).unwrap();
+      await sendMessage({
+        senderId: currentUserId,
+        receiverId: otherUserId,
+        content,
+      }).unwrap();
       setMessage("");
     } catch {
       // El error de la mutación se muestra debajo del formulario.
@@ -54,6 +64,15 @@ export default function ServiceChatPanel({
   };
 
   if (!enabled) {
+    
+    if (waitingForWorker) {
+      return (
+        <WaitingForAcceptance
+          phase={requestStatus === "accepted" ? "accepted" : "waiting"}
+          workerLabel={title}
+        />
+      );
+    }
     return (
       <Box className="h-full flex items-center justify-center p-8 text-center bg-gray-50">
         <Box>
@@ -64,9 +83,11 @@ export default function ServiceChatPanel({
             Chat no disponible
           </Typography>
           <Typography sx={FONT} className="text-sm text-gray-600 mt-2 max-w-xs">
-            {requestStatus === "cancelled"
-              ? "La conversación se cerró porque la solicitud fue cancelada."
-              : "No hay contraparte disponible para chatear."}
+            {waitingForWorker
+              ? "El chat se habilitará cuando un trabajador acepte tu solicitud."
+              : requestStatus === "cancelled"
+                ? "La conversación se cerró porque la solicitud fue cancelada."
+                : "No hay contraparte disponible para chatear."}
           </Typography>
         </Box>
       </Box>
@@ -82,7 +103,7 @@ export default function ServiceChatPanel({
           </Typography>
           <Typography sx={FONT} className="text-xs text-emerald-700 font-semibold mt-0.5">
             {requestStatus === "pending"
-              ? "Coordinación con trabajadores"
+              ? "Coordinación antes de aceptar"
               : requestStatus === "rejected"
                 ? "Conversación tras el rechazo"
                 : "Conversación del servicio"}
@@ -92,6 +113,13 @@ export default function ServiceChatPanel({
       </Box>
 
       <Box className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-3 bg-gray-50">
+        {(requestStatus === "pending" || requestStatus === "in_progress") ? (
+          <WaitingForAcceptance
+            phase={requestStatus === "in_progress" ? "accepted" : "waiting"}
+            workerLabel={title}
+          />
+        ) : null}
+
         {isLoading ? (
           <Box className="h-full flex items-center justify-center">
             <CircularProgress size={28} />
@@ -106,8 +134,8 @@ export default function ServiceChatPanel({
 
         {!isLoading && !conversationError && messages.length === 0 ? (
           <Box className="h-full flex items-center justify-center text-center">
-            <Typography sx={{ ...FONT, color: "#676767" }} className="text-sm max-w-xs">
-              Aún no hay mensajes para esta solicitud. Escribe para coordinar los detalles.
+            <Typography sx={{...FONT, color: "#676767"}} className="text-sm  max-w-xs">
+              Aún no hay mensajes. Escribe para coordinar los detalles del servicio.
             </Typography>
           </Box>
         ) : null}
