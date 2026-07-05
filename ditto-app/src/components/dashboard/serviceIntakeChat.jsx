@@ -25,6 +25,22 @@ function endConversationSession(endSession) {
   }
 }
 
+function extractAgentText(message) {
+  if (typeof message === "string") return message.trim();
+  if (!message || typeof message !== "object") return "";
+
+  const source = message.source ?? message.role ?? message.type;
+  if (source === "user" || source === "user_transcript") return "";
+
+  return (
+    message.message ??
+    message.text ??
+    message.agent_response ??
+    message.agent_response_event?.agent_response ??
+    ""
+  ).trim();
+}
+
 function IntakeChatBody({
   initialDescription,
   userId,
@@ -47,14 +63,56 @@ function IntakeChatBody({
   const [isConnecting, setIsConnecting] = useState(true);
   const initialSentRef = useRef(false);
   const streamingIdRef = useRef(null);
+  const lastAgentTextRef = useRef("");
   const endRef = useRef(null);
   const connectAttemptRef = useRef(0);
 
   const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
-  const sendUserMessageRef = useRef(null);
+
+  const sendInitialMessage = (sendFn) => {
+    if (initialSentRef.current || !initialDescription || typeof sendFn !== "function") {
+      return false;
+    }
+    sendFn(initialDescription);
+    initialSentRef.current = true;
+    return true;
+  };
+
+  const appendAgentText = (text) => {
+    const cleanText = text.trim();
+    if (!cleanText || cleanText === lastAgentTextRef.current) return;
+
+    lastAgentTextRef.current = cleanText;
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last?.role === "agent") {
+        return [...prev.slice(0, -1), { ...last, text: cleanText, streaming: false }];
+      }
+      return [...prev, { role: "agent", text: cleanText, id: Date.now() }];
+    });
+  };
 
   const conversation = useConversation({
     textOnly: true,
+    onMessage: (message) => {
+      const text = extractAgentText(message);
+      if (!text) return;
+
+      if (streamingIdRef.current) {
+        lastAgentTextRef.current = text;
+        setMessages((prev) =>
+          prev.map((item) =>
+            item.id === streamingIdRef.current
+              ? { ...item, text, streaming: false }
+              : item,
+          ),
+        );
+        streamingIdRef.current = null;
+        return;
+      }
+
+      appendAgentText(text);
+    },
     onAgentChatResponsePart: (part) => {
       if (part.type === "start") {
         streamingIdRef.current = Date.now();
@@ -80,22 +138,21 @@ function IntakeChatBody({
       }
 
       if (part.type === "stop") {
-        setMessages((prev) =>
-          prev.map((item) =>
+        setMessages((prev) => {
+          const index = prev.findIndex((item) => item.id === streamingIdRef.current);
+          if (index === -1) return prev;
+          const finalText = prev[index]?.text?.trim() ?? "";
+          if (finalText) lastAgentTextRef.current = finalText;
+          return prev.map((item) =>
             item.id === streamingIdRef.current ? { ...item, streaming: false } : item,
-          ),
-        );
+          );
+        });
         streamingIdRef.current = null;
       }
     },
     onConnect: () => {
       setConnectionError(null);
       setIsConnecting(false);
-
-      if (initialSentRef.current || !initialDescription) return;
-
-      sendUserMessageRef.current?.(initialDescription);
-      initialSentRef.current = true;
     },
     onError: (error) => {
       const message =
@@ -114,14 +171,32 @@ function IntakeChatBody({
 
   const { startSession, endSession, sendUserMessage, sendUserActivity, status } = conversation;
   const isConnected = status === "connected";
-
-  useEffect(() => {
-    sendUserMessageRef.current = sendUserMessage;
-  }, [sendUserMessage]);
+  const canSendMessages = isConnected && !isConnecting;
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, finalSummary]);
+
+  useEffect(() => {
+    if (!canSendMessages) return undefined;
+
+    const timer = window.setTimeout(() => {
+      sendInitialMessage(sendUserMessage);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [canSendMessages, initialDescription, sendUserMessage]);
+
+  useEffect(() => {
+    if (!isConnecting) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setConnectionError("La conexión con ElevenLabs tardó demasiado. Intenta de nuevo.");
+      setIsConnecting(false);
+    }, 20000);
+
+    return () => window.clearTimeout(timer);
+  }, [isConnecting, setConnectionError]);
 
   useEffect(() => {
     if (!initialDescription) return undefined;
@@ -130,6 +205,7 @@ function IntakeChatBody({
     connectAttemptRef.current = attemptId;
     let cancelled = false;
     initialSentRef.current = false;
+    lastAgentTextRef.current = "";
 
     async function connect() {
       try {
@@ -138,10 +214,6 @@ function IntakeChatBody({
 
         const sessionOptions = {
           userId: userId ? String(userId) : undefined,
-          overrides: {
-            conversation: { textOnly: true },
-            agent: { firstMessage: "" },
-          },
         };
 
         if (config.mode === "signed_url" && config.signed_url) {
@@ -190,7 +262,7 @@ function IntakeChatBody({
   const handleSubmit = (event) => {
     event.preventDefault();
     const content = draft.trim();
-    if (!content || !isConnected) return;
+    if (!content || !canSendMessages) return;
 
     setMessages((prev) => [...prev, { role: "user", text: content, id: Date.now() }]);
     sendUserMessage(content);
@@ -293,7 +365,7 @@ function IntakeChatBody({
               );
             })}
 
-          {isConnecting && messages.length > 0 ? (
+          {isConnecting ? (
             <Typography sx={FONT} className="text-xs text-gray-500 text-center">
               Conectando con el asistente...
             </Typography>
@@ -325,14 +397,14 @@ function IntakeChatBody({
               fullWidth
               multiline
               maxRows={4}
-              disabled={!isConnected || isConnecting}
+              disabled={!canSendMessages}
               inputProps={{ maxLength: 1000, "aria-label": "Respuesta" }}
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3, ...FONT } }}
             />
             <Button
               type="submit"
               variant="contained"
-              disabled={!draft.trim() || !isConnected || isConnecting}
+              disabled={!draft.trim() || !canSendMessages}
               aria-label="Enviar respuesta"
               sx={{
                 minWidth: 44,
