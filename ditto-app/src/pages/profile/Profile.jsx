@@ -67,7 +67,11 @@ function ProfilePageShell({ children }) {
       sx={{ ...FONT, bgcolor: BRAND.paper, color: '#1a1a1a', minHeight: '100%' }}
       className="p-4 md:p-8 min-w-0 w-full text-left"
     >
-      {children}
+      <Box className="grid grid-cols-1 md:grid-cols-3 w-full">
+        <Box className="hidden md:block" aria-hidden="true" />
+        <Box className="min-w-0 w-full">{children}</Box>
+        <Box className="hidden md:block" aria-hidden="true" />
+      </Box>
     </Box>
   )
 }
@@ -288,30 +292,32 @@ function ProfileField({
 
 function ProfileFieldSection({ title, fields, isEditing, displayData, emptyValue, onFieldChange }) {
   return (
-    <Box className="border border-gray-200 rounded-2xl bg-paper p-5 md:p-6">
-      <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-        {title}
-      </Typography>
+    <Box className="border border-gray-200 rounded-2xl bg-paper p-5 md:p-6 mb-6">
+      <Stack spacing={3}>
+        <Typography sx={FONT} className="text-lg font-bold text-gray-900">
+          {title}
+        </Typography>
 
-      <Stack spacing={2.5}>
-        {fields.map(({ key, label, multiline, rows, type = 'text', InputLabelProps }) => (
-          <ProfileField
-            key={key}
-            label={label}
-            value={resolveFieldValue({
-              type,
-              rawValue: displayData[key],
-              isEditing,
-              emptyValue,
-            })}
-            onChange={onFieldChange(key)}
-            readOnly={!isEditing}
-            multiline={multiline}
-            rows={rows}
-            type={type}
-            InputLabelProps={InputLabelProps}
-          />
-        ))}
+        <Stack spacing={2.5}>
+          {fields.map(({ key, label, multiline, rows, type = 'text', InputLabelProps }) => (
+            <ProfileField
+              key={key}
+              label={label}
+              value={resolveFieldValue({
+                type,
+                rawValue: displayData[key],
+                isEditing,
+                emptyValue,
+              })}
+              onChange={onFieldChange(key)}
+              readOnly={!isEditing}
+              multiline={multiline}
+              rows={rows}
+              type={type}
+              InputLabelProps={InputLabelProps}
+            />
+          ))}
+        </Stack>
       </Stack>
     </Box>
   )
@@ -385,7 +391,7 @@ export function Profile({
         )}
       </Box>
 
-      <Stack spacing={3}>
+      <Stack spacing={0}>
         <ProfileFieldSection
           title="Información personal"
           fields={personalFields}
@@ -396,27 +402,29 @@ export function Profile({
         />
 
         {professionalFields.length > 0 ? (
-          <Box className="border border-primary-200 rounded-2xl bg-primary-50 p-5 md:p-6">
-            <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-              Información profesional
-            </Typography>
+          <Box className="border border-primary-200 rounded-2xl bg-primary-50 p-5 md:p-6 mb-6">
+            <Stack spacing={3}>
+              <Typography sx={FONT} className="text-lg font-bold text-gray-900">
+                Información profesional
+              </Typography>
 
-            <Stack spacing={2.5}>
-              {professionalFields.map(
-                ({ key, label, multiline, rows, type = 'text', InputLabelProps }) => (
-                  <ProfileField
-                    key={key}
-                    label={label}
-                    value={displayData[key] || (isEditing ? '' : emptyValue)}
-                    onChange={handleChange(key)}
-                    readOnly={!isEditing}
-                    multiline={multiline}
-                    rows={rows}
-                    type={type}
-                    InputLabelProps={InputLabelProps}
-                  />
-                ),
-              )}
+              <Stack spacing={2.5}>
+                {professionalFields.map(
+                  ({ key, label, multiline, rows, type = 'text', InputLabelProps }) => (
+                    <ProfileField
+                      key={key}
+                      label={label}
+                      value={displayData[key] || (isEditing ? '' : emptyValue)}
+                      onChange={handleChange(key)}
+                      readOnly={!isEditing}
+                      multiline={multiline}
+                      rows={rows}
+                      type={type}
+                      InputLabelProps={InputLabelProps}
+                    />
+                  ),
+                )}
+              </Stack>
             </Stack>
           </Box>
         ) : null}
