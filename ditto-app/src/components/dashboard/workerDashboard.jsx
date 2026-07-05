@@ -39,6 +39,12 @@ const avatarSx = {
   fontWeight: 700,
 };
 
+function clientLabel(request) {
+  const name = request?.client_name?.trim();
+  if (name) return name;
+  return `Cliente #${request?.user_id ?? ""}`;
+}
+
 export default function WorkerDashboard() {
   const {
     user,
@@ -256,7 +262,7 @@ export default function WorkerDashboard() {
               }`}
             >
               <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
-                Cliente #{request.user_id} — {request.description}
+                {clientLabel(request)} — {request.description}
                 {distance ? ` · ${distance}` : ""}
               </Typography>
               <span
@@ -302,7 +308,7 @@ export default function WorkerDashboard() {
               }`}
             >
               <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
-                Cliente #{request.user_id} — {request.description}
+                {clientLabel(request)} — {request.description}
                 {distance ? ` · ${distance}` : ""}
               </Typography>
               <span
@@ -349,7 +355,7 @@ export default function WorkerDashboard() {
         onClose={() => setDialogRequestId(null)}
         request={dialogRequest}
         currentUserId={user.id}
-        counterpartLabel={`Cliente #${dialogRequest?.user_id ?? ""}`}
+        counterpartLabel={clientLabel(dialogRequest)}
         isWorker
         workerId={workerId}
       />
