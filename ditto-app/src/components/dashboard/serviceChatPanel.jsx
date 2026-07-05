@@ -12,6 +12,7 @@ export default function ServiceChatPanel({
   title,
   enabled,
   requestStatus,
+  waitingForWorker = false,
 }) {
   const [message, setMessage] = useState("");
   const endRef = useRef(null);
@@ -59,9 +60,11 @@ export default function ServiceChatPanel({
             Chat no disponible
           </Typography>
           <Typography sx={FONT} className="text-sm text-gray-600 mt-2 max-w-xs">
-            {requestStatus === "cancelled"
-              ? "La conversación se cerró porque la solicitud fue cancelada."
-              : "No hay contraparte disponible para chatear."}
+            {waitingForWorker
+              ? "El chat se habilitará cuando un trabajador acepte tu solicitud."
+              : requestStatus === "cancelled"
+                ? "La conversación se cerró porque la solicitud fue cancelada."
+                : "No hay contraparte disponible para chatear."}
           </Typography>
         </Box>
       </Box>

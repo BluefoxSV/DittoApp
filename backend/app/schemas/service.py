@@ -6,8 +6,8 @@ from app.models.service import ServiceRequestStatus
 
 
 class ServiceRequestCreate(BaseModel):
-    worker_id: int
     description: str
+    worker_id: int | None = None
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
@@ -15,6 +15,7 @@ class ServiceRequestCreate(BaseModel):
 class ServiceRequestUpdate(BaseModel):
     status: ServiceRequestStatus | None = None
     worker_id: int | None = None
+    republish: bool = False
 
 
 class ServiceRequestRead(BaseModel):
@@ -22,7 +23,7 @@ class ServiceRequestRead(BaseModel):
 
     id: int
     user_id: int
-    worker_id: int
+    worker_id: int | None = None
     description: str
     latitude: float | None = None
     longitude: float | None = None

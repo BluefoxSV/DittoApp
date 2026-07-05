@@ -17,6 +17,10 @@ export const workersApi = apiSlice.injectEndpoints({
       query: (userId) => `/workers/user/${userId}/profile`,
       providesTags: (_result, _error, userId) => [{ type: "Worker", id: userId }],
     }),
+    getWorker: builder.query({
+      query: (workerId) => `/workers/${workerId}`,
+      providesTags: (_result, _error, workerId) => [{ type: "Worker", id: workerId }],
+    }),
     createWorkerProfile: builder.mutation({
       query: ({ userId, ...body }) => ({
         url: `/workers/${userId}/profile`,
@@ -38,6 +42,7 @@ export const workersApi = apiSlice.injectEndpoints({
 
 export const {
   useGetWorkersQuery,
+  useGetWorkerQuery,
   useGetWorkerProfileByUserIdQuery,
   useCreateWorkerProfileMutation,
   useUpdateWorkerLocationMutation,

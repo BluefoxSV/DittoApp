@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -15,9 +14,7 @@ import {
   useCreateServiceRequestMutation,
   useGetUserServiceRequestsQuery,
 } from "../../store/api/serviceRequestsApi";
-import { useGetWorkersQuery } from "../../store/api/workersApi";
 import { useUpdateUserLocationMutation } from "../../store/api/usersApi";
-import { formatDistanceKm } from "../../utils/distance";
 import ServiceRequestDialog from "./serviceRequestDialog";
 import {
   formatServiceDate,
@@ -27,27 +24,10 @@ import {
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 const LOCATION_PRECISION = 4;
-const avatarSx = {
-  bgcolor: "#BB6AF0",
-  color: "#fff",
-  width: 40,
-  height: 40,
-  fontSize: 14,
-  fontWeight: 700,
-};
 
-function workerLabel(worker) {
-  if (!worker) return "Profesional no asignado";
-  return worker?.bio?.trim() || `Profesional #${worker?.id ?? ""}`;
-}
-
-function workerInitials(worker) {
-  const label = workerLabel(worker);
-  return label
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
+function requestTitle(request) {
+  if (!request?.worker_id) return "Publicado en el feed — esperando trabajador";
+  return `Solicitud #${request.id}`;
 }
 
 function getFirstName(displayName) {
@@ -61,7 +41,6 @@ export default function UserDashboard() {
   const firstName = getFirstName(displayName);
   const userId = user?.id;
   const [description, setDescription] = useState("");
-  const [selectedWorkerId, setSelectedWorkerId] = useState(null);
   const [dialogRequestId, setDialogRequestId] = useState(null);
 
   const { coords, error: geoError, isLoading: isLoadingGeo, refresh: refreshGeo } =
@@ -79,19 +58,6 @@ export default function UserDashboard() {
     return { latitude, longitude };
   }, [locationKey]);
 
-  const workerQueryArgs = useMemo(
-    () =>
-      stableCoords
-        ? { lat: stableCoords.latitude, lng: stableCoords.longitude, radiusKm: 100 }
-        : {},
-    [stableCoords],
-  );
-
-  const {
-    data: workers = [],
-    isLoading: isLoadingWorkers,
-    error: workersError,
-  } = useGetWorkersQuery(workerQueryArgs);
   const {
     data: requests = [],
     isLoading: isLoadingRequests,
@@ -112,35 +78,25 @@ export default function UserDashboard() {
     });
   }, [userId, stableCoords, updateUserLocation]);
 
-  const workersById = useMemo(
-    () => new Map(workers.map((worker) => [worker.id, worker])),
-    [workers],
-  );
-  const suggestions = workers.slice(0, 6);
   const orderedRequests = useMemo(
     () => [...requests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
     [requests],
   );
   const dialogRequest =
     requests.find(({ id }) => id === dialogRequestId) ?? null;
-  const dialogWorker = dialogRequest
-    ? workersById.get(dialogRequest.worker_id)
-    : null;
 
   const handleCreate = async (event) => {
     event.preventDefault();
     const cleanDescription = description.trim();
     if (!cleanDescription || !userId) return;
 
-    const payload = {
-      userId,
-      workerId: selectedWorkerId,
-      description: cleanDescription,
-    };
-    console.log("Enviando solicitud de servicio:", payload);
-
     try {
-      const request = await createRequest(payload).unwrap();
+      const request = await createRequest({
+        userId,
+        description: cleanDescription,
+        latitude: stableCoords?.latitude,
+        longitude: stableCoords?.longitude,
+      }).unwrap();
       setDescription("");
       setDialogRequestId(request.id);
     } catch {
@@ -183,7 +139,7 @@ export default function UserDashboard() {
 
       {geoError ? (
         <Alert severity="info" className="mb-4">
-          Activa la ubicación para ver trabajadores más cercanos. {geoError}
+          Activa la ubicación para que los trabajadores cercanos vean tu solicitud. {geoError}
         </Alert>
       ) : null}
 
@@ -193,10 +149,10 @@ export default function UserDashboard() {
         className="bg-primary-500 rounded-2xl p-5 mb-8"
       >
         <Typography sx={FONT} className="text-white text-sm font-medium mb-3">
-          Escribe tu necesidad. Elegir un trabajador es opcional; también puedes recibir una asignación automática.
+          Publica lo que necesitas. Los trabajadores cercanos podrán verlo y aceptarlo.
         </Typography>
         <Box className="bg-paper rounded-xl px-3 flex items-center gap-2">
-          <i className="ti ti-search text-gray-900 flex-shrink-0 text-lg" aria-hidden="true" />
+          <i className="ti ti-pencil text-gray-900 flex-shrink-0 text-lg" aria-hidden="true" />
           <TextField
             value={description}
             onChange={(event) => setDescription(event.target.value)}
@@ -222,7 +178,7 @@ export default function UserDashboard() {
               <CircularProgress size={18} />
             ) : (
               <>
-                <span className="hidden sm:inline">Solicitar</span>
+                <span className="hidden sm:inline">Publicar</span>
                 <i className="ti ti-send sm:hidden" aria-hidden="true" />
               </>
             )}
@@ -230,83 +186,31 @@ export default function UserDashboard() {
         </Box>
         {createError ? (
           <Alert severity="error" className="mt-3">
-            {getApiErrorMessage(createError, "No se pudo enviar la solicitud.")}
+            {getApiErrorMessage(createError, "No se pudo publicar la solicitud.")}
           </Alert>
         ) : null}
       </Box>
 
       <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-        {coords ? "Trabajadores más cercanos" : "Trabajadores disponibles"}
-      </Typography>
-      {workersError ? (
-        <Alert severity="error" className="mb-4">
-          {getApiErrorMessage(workersError, "No se pudieron cargar los trabajadores.")}
-        </Alert>
-      ) : null}
-      <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {isLoadingWorkers && suggestions.length === 0 ? (
-          <Box className="col-span-full py-8 flex justify-center">
-            <CircularProgress size={28} />
-          </Box>
-        ) : null}
-        {!isLoadingWorkers && suggestions.length === 0 ? (
-          <Typography sx={FONT} className="text-sm text-gray-500 col-span-full">
-            No hay trabajadores con ubicación registrada cerca de ti.
-          </Typography>
-        ) : null}
-        {suggestions.map((worker, index) => {
-          const selected = selectedWorkerId === worker.id;
-          const distance = formatDistanceKm(worker.distance_km);
-          return (
-            <Box
-              component="button"
-              type="button"
-              onClick={() => setSelectedWorkerId(worker.id)}
-              key={worker.id}
-              aria-pressed={selected}
-              className={`rounded-2xl p-5 min-w-0 border text-left transition-shadow hover:shadow-md ${
-                selected || index % 2 === 0
-                  ? "bg-primary-50 border-primary-200"
-                  : "bg-gray-100 border-gray-200"
-              }`}
-            >
-              <Avatar sx={avatarSx} className="mb-3">
-                {workerInitials(worker)}
-              </Avatar>
-              <Typography sx={FONT} className="text-base font-bold text-gray-900 truncate">
-                {workerLabel(worker)}
-              </Typography>
-              <Typography sx={FONT} className="text-sm font-semibold text-primary-700 mt-1">
-                {worker.is_verified ? "Trabajador verificado" : "Perfil disponible"}
-                {distance ? ` · ${distance}` : ""}
-                {selected ? " · Seleccionado" : ""}
-              </Typography>
-            </Box>
-          );
-        })}
-      </Box>
-
-      <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-        Servicio activo
+        Mis solicitudes
       </Typography>
       {requestsError ? (
         <Alert severity="error" className="mb-4">
           {getApiErrorMessage(requestsError, "No se pudieron cargar tus solicitudes.")}
         </Alert>
       ) : null}
-      <Box className="bg-primary-100 border border-primary-200 hover:bg-primary-200 hover:border-primary-300 transition-colors">
+      <Box className="bg-primary-100 border border-primary-200 rounded-2xl overflow-hidden">
         {isLoadingRequests ? (
           <Box className="p-8 flex justify-center">
             <CircularProgress size={28} />
           </Box>
         ) : null}
         {!isLoadingRequests && orderedRequests.length === 0 ? (
-          <Typography sx={FONT} className="text-sm text-gray-900 p-5">
-            Aún no tienes solicitudes de servicio.
+          <Typography sx={FONT} className="text-sm text-gray-700 p-5">
+            Aún no has publicado ninguna solicitud.
           </Typography>
         ) : null}
         {orderedRequests.map((request, index) => {
-          const worker = workersById.get(request.worker_id);
           const status = getServiceStatus(request.status);
           return (
             <Box
@@ -320,10 +224,10 @@ export default function UserDashboard() {
             >
               <Box className="min-w-0">
                 <Typography sx={FONT} className="text-base font-bold text-gray-900 truncate">
-                  {workerLabel(worker)} — {request.description}
+                  {request.description}
                 </Typography>
-                <Typography sx={FONT} className="text-sm text-gray-700 mt-1">
-                  {formatServiceDate(request.created_at)}
+                <Typography sx={FONT} className="text-sm text-gray-600 mt-1">
+                  {requestTitle(request)} · {formatServiceDate(request.created_at)}
                 </Typography>
               </Box>
               <span
@@ -341,8 +245,8 @@ export default function UserDashboard() {
         onClose={() => setDialogRequestId(null)}
         request={dialogRequest}
         currentUserId={userId}
-        otherUserId={dialogWorker?.user_id}
-        counterpartLabel={workerLabel(dialogWorker)}
+        otherUserId={null}
+        counterpartLabel={requestTitle(dialogRequest)}
       />
     </Box>
   );

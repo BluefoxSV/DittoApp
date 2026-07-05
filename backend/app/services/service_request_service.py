@@ -11,7 +11,9 @@ from app.utils.geo import haversine_km
 
 async def create_service_request(user_id: int, data: ServiceRequestCreate) -> ServiceRequest:
     user = await get_user_by_id(user_id)
-    worker = await get_worker_profile(data.worker_id)
+    worker = None
+    if data.worker_id is not None:
+        worker = await get_worker_profile(data.worker_id)
 
     latitude = data.latitude
     longitude = data.longitude
@@ -73,33 +75,31 @@ async def list_worker_requests(
     return with_distance + without_location
 
 
-async def list_nearby_pending_requests(
+async def list_nearby_open_requests(
     latitude: float,
     longitude: float,
     *,
     radius_km: float = 50.0,
 ) -> list[ServiceRequestWithDistance]:
-    requests = await ServiceRequest.filter(status=ServiceRequestStatus.PENDING)
+    requests = await ServiceRequest.filter(
+        status=ServiceRequestStatus.PENDING,
+        worker_id__isnull=True,
+    )
     nearby: list[ServiceRequestWithDistance] = []
+    without_location: list[ServiceRequestWithDistance] = []
 
     for request in requests:
+        item = ServiceRequestWithDistance.model_validate(request)
         if request.latitude is None or request.longitude is None:
+            without_location.append(item)
             continue
         distance = haversine_km(latitude, longitude, request.latitude, request.longitude)
         if distance <= radius_km:
-            nearby.append(
-                ServiceRequestWithDistance.model_validate(request).model_copy(
-                    update={"distance_km": round(distance, 2)}
-                )
-            )
+            nearby.append(item.model_copy(update={"distance_km": round(distance, 2)}))
 
     nearby.sort(key=lambda item: item.distance_km or float("inf"))
-    return nearby
-
-
-def _ensure_worker_can_update(current_user_id: int, worker_user_id: int, is_support: bool) -> None:
-    if current_user_id != worker_user_id and not is_support:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    without_location.sort(key=lambda item: -item.created_at.timestamp())
+    return nearby + without_location
 
 
 async def update_service_request(
@@ -110,8 +110,20 @@ async def update_service_request(
     is_worker: bool,
     is_owner: bool,
     is_support: bool,
+    claiming_worker_id: int | None = None,
 ) -> ServiceRequest:
     request = await get_service_request(request_id)
+
+    if data.republish:
+        if not is_owner and not is_support:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+        if request.status != ServiceRequestStatus.REJECTED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Solo puedes republicar una solicitud rechazada",
+            )
+        request.worker_id = None
+        request.status = ServiceRequestStatus.PENDING
 
     if data.worker_id is not None:
         if not is_owner and not is_support:
@@ -134,14 +146,45 @@ async def update_service_request(
             if new_status == ServiceRequestStatus.COMPLETED:
                 request.completed_at = datetime.now(UTC)
         elif is_worker and not is_owner:
-            if new_status == ServiceRequestStatus.REJECTED and current_status == ServiceRequestStatus.PENDING:
-                request.status = ServiceRequestStatus.REJECTED
-            elif new_status == ServiceRequestStatus.IN_PROGRESS and current_status == ServiceRequestStatus.PENDING:
+            if new_status == ServiceRequestStatus.IN_PROGRESS and current_status == ServiceRequestStatus.PENDING:
+                if request.worker_id is None:
+                    if claiming_worker_id is None:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="No se pudo identificar al trabajador",
+                        )
+                    claimed = await ServiceRequest.filter(
+                        id=request_id,
+                        worker_id__isnull=True,
+                        status=ServiceRequestStatus.PENDING,
+                    ).update(worker_id=claiming_worker_id, status=ServiceRequestStatus.IN_PROGRESS)
+                    if claimed == 0:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="La solicitud ya fue tomada por otro trabajador",
+                        )
+                    return await get_service_request(request_id)
+                if request.worker_id != claiming_worker_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Esta solicitud está asignada a otro trabajador",
+                    )
                 request.status = ServiceRequestStatus.IN_PROGRESS
+            elif new_status == ServiceRequestStatus.REJECTED and current_status == ServiceRequestStatus.PENDING:
+                if request.worker_id is None or request.worker_id != claiming_worker_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="No puedes rechazar una solicitud que no te corresponde",
+                    )
+                request.status = ServiceRequestStatus.REJECTED
             elif new_status == ServiceRequestStatus.COMPLETED and current_status == ServiceRequestStatus.IN_PROGRESS:
+                if request.worker_id != claiming_worker_id:
+                    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
                 request.status = ServiceRequestStatus.COMPLETED
                 request.completed_at = datetime.now(UTC)
             elif new_status == ServiceRequestStatus.CANCELLED and current_status == ServiceRequestStatus.IN_PROGRESS:
+                if request.worker_id != claiming_worker_id:
+                    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
                 request.status = ServiceRequestStatus.CANCELLED
             else:
                 raise HTTPException(

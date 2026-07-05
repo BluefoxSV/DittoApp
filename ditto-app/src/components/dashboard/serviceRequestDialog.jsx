@@ -15,9 +15,10 @@ import {
 
 import {
   useReassignServiceRequestMutation,
+  useRepublishServiceRequestMutation,
   useUpdateServiceRequestStatusMutation,
 } from "../../store/api/serviceRequestsApi";
-import { useGetWorkersQuery } from "../../store/api/workersApi";
+import { useGetWorkersQuery, useGetWorkerQuery } from "../../store/api/workersApi";
 import { formatDistanceKm } from "../../utils/distance";
 import ServiceChatPanel from "./serviceChatPanel";
 import {
@@ -38,21 +39,32 @@ export default function ServiceRequestDialog({
   onClose,
   request,
   currentUserId,
-  otherUserId,
+  otherUserId: otherUserIdProp,
   counterpartLabel,
   isWorker = false,
+  workerId = null,
 }) {
   const [updateStatus, { isLoading, error }] = useUpdateServiceRequestStatusMutation();
   const [reassignRequest, { isLoading: isReassigning, error: reassignError }] =
     useReassignServiceRequestMutation();
+  const [republishRequest, { isLoading: isRepublishing, error: republishError }] =
+    useRepublishServiceRequestMutation();
   const { data: workers = [] } = useGetWorkersQuery(undefined, { skip: isWorker });
+  const { data: assignedWorker } = useGetWorkerQuery(request?.worker_id, {
+    skip: isWorker || !request?.worker_id,
+  });
   const [newWorkerId, setNewWorkerId] = useState("");
 
   if (!request) return null;
 
   const status = getServiceStatus(request.status);
+  const otherUserId = otherUserIdProp ?? assignedWorker?.user_id ?? null;
   const chatEnabled = Boolean(otherUserId) && isChatEnabled(request.status);
   const distanceLabel = formatDistanceKm(request.distance_km);
+  const isOpenFeedItem = !request.worker_id;
+  const isAssignedToMe = isWorker && request.worker_id === workerId;
+  const canClaimFromFeed = isWorker && isOpenFeedItem && request.status === "pending";
+  const canRespondAsAssignee = isWorker && isAssignedToMe && request.status === "pending";
 
   const changeStatus = async (nextStatus) => {
     try {
@@ -70,6 +82,14 @@ export default function ServiceRequestDialog({
         workerId: Number(newWorkerId),
       }).unwrap();
       setNewWorkerId("");
+    } catch {
+      // El error se muestra dentro del diálogo.
+    }
+  };
+
+  const handleRepublish = async () => {
+    try {
+      await republishRequest(request.id).unwrap();
     } catch {
       // El error se muestra dentro del diálogo.
     }
@@ -112,10 +132,22 @@ export default function ServiceRequestDialog({
       <DialogContent sx={{ p: 0 }}>
         <Box className="grid grid-cols-1 md:grid-cols-[0.9fr_1.1fr] min-h-[520px]">
           <Box className="p-5 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
+            {!isWorker && request.status === "pending" && isOpenFeedItem ? (
+              <Alert severity="info" className="mb-4">
+                Tu solicitud está visible en el feed. Un trabajador cercano puede aceptarla.
+              </Alert>
+            ) : null}
+
             {!isWorker && request.status === "rejected" ? (
               <Alert severity="warning" className="mb-4">
-                El trabajador rechazó esta solicitud. Puedes chatear para coordinar, elegir otro
-                profesional o cancelar la solicitud.
+                Un trabajador rechazó esta solicitud. Puedes republicarla en el feed, asignarla a
+                alguien específico o cancelarla.
+              </Alert>
+            ) : null}
+
+            {canClaimFromFeed ? (
+              <Alert severity="info" className="mb-4">
+                Solicitud abierta en el feed. Al aceptar, quedará asignada a ti.
               </Alert>
             ) : null}
 
@@ -148,9 +180,26 @@ export default function ServiceRequestDialog({
                 {getApiErrorMessage(reassignError, "No se pudo reasignar la solicitud.")}
               </Alert>
             ) : null}
+            {republishError ? (
+              <Alert severity="error" className="mt-4">
+                {getApiErrorMessage(republishError, "No se pudo republicar la solicitud.")}
+              </Alert>
+            ) : null}
 
             <Box className="mt-auto pt-6 flex flex-col gap-3">
-              {isWorker && request.status === "pending" ? (
+              {canClaimFromFeed ? (
+                <Button
+                  variant="contained"
+                  fullWidth
+                  disabled={isLoading}
+                  onClick={() => changeStatus("in_progress")}
+                  sx={{ ...FONT, borderRadius: 3, bgcolor: "#BB6AF0", "&:hover": { bgcolor: "#a855df" } }}
+                >
+                  {isLoading ? <CircularProgress size={18} color="inherit" /> : "Aceptar solicitud"}
+                </Button>
+              ) : null}
+
+              {canRespondAsAssignee ? (
                 <Box className="grid grid-cols-2 gap-3">
                   <Button
                     variant="outlined"
@@ -171,7 +220,7 @@ export default function ServiceRequestDialog({
                 </Box>
               ) : null}
 
-              {isWorker && request.status === "in_progress" ? (
+              {isWorker && request.status === "in_progress" && isAssignedToMe ? (
                 <Box className="grid grid-cols-2 gap-3">
                   <Button
                     variant="outlined"
@@ -194,10 +243,22 @@ export default function ServiceRequestDialog({
 
               {!isWorker && request.status === "rejected" ? (
                 <Box className="flex flex-col gap-3">
+                  <Button
+                    variant="contained"
+                    disabled={isRepublishing}
+                    onClick={handleRepublish}
+                    sx={{ ...FONT, borderRadius: 3, bgcolor: "#BB6AF0", "&:hover": { bgcolor: "#a855df" } }}
+                  >
+                    {isRepublishing ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      "Republicar en el feed"
+                    )}
+                  </Button>
                   <TextField
                     select
                     size="small"
-                    label="Elegir otro trabajador"
+                    label="O asignar a un trabajador específico"
                     value={newWorkerId}
                     onChange={(event) => setNewWorkerId(event.target.value)}
                     fullWidth
@@ -215,15 +276,15 @@ export default function ServiceRequestDialog({
                       ))}
                   </TextField>
                   <Button
-                    variant="contained"
+                    variant="outlined"
                     disabled={!newWorkerId || isReassigning}
                     onClick={handleReassign}
-                    sx={{ ...FONT, borderRadius: 3, bgcolor: "#BB6AF0", "&:hover": { bgcolor: "#a855df" } }}
+                    sx={{ ...FONT, borderRadius: 3, color: "#874cad", borderColor: "#d1d5db" }}
                   >
                     {isReassigning ? (
                       <CircularProgress size={18} color="inherit" />
                     ) : (
-                      "Reenviar a otro trabajador"
+                      "Asignar trabajador"
                     )}
                   </Button>
                 </Box>
@@ -250,6 +311,7 @@ export default function ServiceRequestDialog({
               title={counterpartLabel}
               enabled={chatEnabled}
               requestStatus={request.status}
+              waitingForWorker={!isWorker && isOpenFeedItem && request.status === "pending"}
             />
           </Box>
         </Box>

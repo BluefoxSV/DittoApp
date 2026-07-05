@@ -14,7 +14,12 @@ class ServiceRequestStatus(str, Enum):
 class ServiceRequest(models.Model):
     id = fields.IntField(pk=True)
     user = fields.ForeignKeyField("models.User", related_name="service_requests", on_delete=fields.CASCADE)
-    worker = fields.ForeignKeyField("models.WorkerProfile", related_name="service_requests", on_delete=fields.CASCADE)
+    worker = fields.ForeignKeyField(
+        "models.WorkerProfile",
+        related_name="service_requests",
+        on_delete=fields.CASCADE,
+        null=True,
+    )
     description = fields.TextField()
     latitude = fields.FloatField(null=True)
     longitude = fields.FloatField(null=True)

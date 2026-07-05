@@ -13,7 +13,7 @@ import {
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { useGeolocation } from "../../hooks/useGeolocation";
 import {
-  useGetNearbyServiceRequestsQuery,
+  useGetFeedServiceRequestsQuery,
   useGetWorkerServiceRequestsQuery,
 } from "../../store/api/serviceRequestsApi";
 import { useUpdateWorkerLocationMutation } from "../../store/api/workersApi";
@@ -68,20 +68,29 @@ export default function WorkerDashboard() {
   );
 
   const {
-    data: requests = [],
-    isLoading,
-    error,
+    data: myRequests = [],
+    isLoading: isLoadingMine,
+    error: myRequestsError,
   } = useGetWorkerServiceRequestsQuery(requestQueryArgs, {
     skip: !workerId,
     pollingInterval: 15000,
   });
 
-  const { data: nearbyRequests = [] } = useGetNearbyServiceRequestsQuery(
-    coords
-      ? { lat: coords.latitude, lng: coords.longitude, radiusKm: 30 }
-      : undefined,
-    { skip: !coords },
+  const feedQueryArgs = useMemo(
+    () =>
+      coords
+        ? { lat: coords.latitude, lng: coords.longitude, radiusKm: 50 }
+        : {},
+    [coords],
   );
+
+  const {
+    data: feedRequests = [],
+    isLoading: isLoadingFeed,
+    error: feedError,
+  } = useGetFeedServiceRequestsQuery(feedQueryArgs, {
+    pollingInterval: 15000,
+  });
 
   useEffect(() => {
     if (!workerId || !coords) return;
@@ -92,27 +101,31 @@ export default function WorkerDashboard() {
     });
   }, [workerId, coords, updateWorkerLocation]);
 
-  const orderedRequests = useMemo(() => {
+  const allRequests = useMemo(() => {
+    const byId = new Map();
+    for (const request of [...feedRequests, ...myRequests]) {
+      byId.set(request.id, request);
+    }
+    return [...byId.values()];
+  }, [feedRequests, myRequests]);
+
+  const orderedMine = useMemo(() => {
     const priority = { pending: 0, in_progress: 1, rejected: 2, completed: 3, cancelled: 4 };
-    return [...requests].sort(
+    return [...myRequests].sort(
       (a, b) =>
         (priority[a.status] ?? 5) - (priority[b.status] ?? 5) ||
         (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity) ||
         new Date(b.created_at) - new Date(a.created_at),
     );
-  }, [requests]);
-
-  const nearbyForWorker = useMemo(
-    () => nearbyRequests.filter((request) => request.worker_id === workerId).slice(0, 5),
-    [nearbyRequests, workerId],
-  );
+  }, [myRequests]);
 
   const dialogRequest =
-    requests.find(({ id }) => id === dialogRequestId) ?? null;
-  const activeRequests = requests.filter(({ status }) =>
+    allRequests.find(({ id }) => id === dialogRequestId) ?? null;
+
+  const activeRequests = myRequests.filter(({ status }) =>
     ["pending", "in_progress"].includes(status),
   ).length;
-  const completedRequests = requests.filter(
+  const completedRequests = myRequests.filter(
     ({ status }) => status === "completed",
   ).length;
 
@@ -171,7 +184,7 @@ export default function WorkerDashboard() {
 
       {geoError ? (
         <Alert severity="info" className="mb-4">
-          Activa la ubicación para ordenar solicitudes por proximidad. {geoError}
+          Activa la ubicación para ver solicitudes cercanas en el feed. {geoError}
         </Alert>
       ) : null}
 
@@ -204,61 +217,26 @@ export default function WorkerDashboard() {
         ))}
       </Box>
 
-      {coords && nearbyForWorker.length > 0 ? (
-        <>
-          <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-            Ofertas más cercanas
-          </Typography>
-          <Box className="border border-primary-200 rounded-2xl overflow-hidden mb-8 bg-primary-50/30">
-            {nearbyForWorker.map((request, index) => {
-              const status = getServiceStatus(request.status);
-              const distance = formatDistanceKm(request.distance_km);
-              return (
-                <Box
-                  component="button"
-                  type="button"
-                  onClick={() => setDialogRequestId(request.id)}
-                  key={request.id}
-                  className={`w-full flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 px-5 py-4 text-left bg-paper hover:bg-primary-50/40 ${
-                    index < nearbyForWorker.length - 1 ? "border-b border-gray-200" : ""
-                  }`}
-                >
-                  <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
-                    Cliente #{request.user_id} — {request.description}
-                    {distance ? ` · ${distance}` : ""}
-                  </Typography>
-                  <span
-                    className={`text-xs font-bold px-3 py-1 rounded-full border flex-shrink-0 self-start sm:self-center ${status.className}`}
-                  >
-                    {status.label}
-                  </span>
-                </Box>
-              );
-            })}
-          </Box>
-        </>
-      ) : null}
-
       <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
-        {coords ? "Todas tus solicitudes (por proximidad)" : "Solicitudes recientes"}
+        Feed de solicitudes {coords ? "cercanas" : "disponibles"}
       </Typography>
-      {error ? (
+      {feedError ? (
         <Alert severity="error" className="mb-4">
-          {getApiErrorMessage(error, "No se pudieron cargar las solicitudes.")}
+          {getApiErrorMessage(feedError, "No se pudo cargar el feed.")}
         </Alert>
       ) : null}
-      <Box className="border border-gray-200 rounded-2xl overflow-hidden mb-8">
-        {isLoading ? (
+      <Box className="border border-primary-200 rounded-2xl overflow-hidden mb-8 bg-primary-50/30">
+        {isLoadingFeed ? (
           <Box className="p-8 flex justify-center">
             <CircularProgress size={28} />
           </Box>
         ) : null}
-        {!isLoading && orderedRequests.length === 0 ? (
+        {!isLoadingFeed && feedRequests.length === 0 ? (
           <Typography sx={FONT} className="text-sm text-gray-700 p-5">
-            Aún no tienes solicitudes de servicio.
+            No hay solicitudes abiertas en este momento.
           </Typography>
         ) : null}
-        {orderedRequests.map((request, index) => {
+        {feedRequests.map((request, index) => {
           const status = getServiceStatus(request.status);
           const distance = formatDistanceKm(request.distance_km);
           return (
@@ -268,7 +246,53 @@ export default function WorkerDashboard() {
               onClick={() => setDialogRequestId(request.id)}
               key={request.id}
               className={`w-full flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 px-5 py-4 text-left bg-paper hover:bg-primary-50/40 ${
-                index < orderedRequests.length - 1 ? "border-b border-gray-200" : ""
+                index < feedRequests.length - 1 ? "border-b border-gray-200" : ""
+              }`}
+            >
+              <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
+                Cliente #{request.user_id} — {request.description}
+                {distance ? ` · ${distance}` : ""}
+              </Typography>
+              <span
+                className={`text-xs font-bold px-3 py-1 rounded-full border flex-shrink-0 self-start sm:self-center ${status.className}`}
+              >
+                {status.label}
+              </span>
+            </Box>
+          );
+        })}
+      </Box>
+
+      <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+        Mis trabajos asignados
+      </Typography>
+      {myRequestsError ? (
+        <Alert severity="error" className="mb-4">
+          {getApiErrorMessage(myRequestsError, "No se pudieron cargar tus solicitudes.")}
+        </Alert>
+      ) : null}
+      <Box className="border border-gray-200 rounded-2xl overflow-hidden mb-8">
+        {isLoadingMine ? (
+          <Box className="p-8 flex justify-center">
+            <CircularProgress size={28} />
+          </Box>
+        ) : null}
+        {!isLoadingMine && orderedMine.length === 0 ? (
+          <Typography sx={FONT} className="text-sm text-gray-700 p-5">
+            Aún no tienes trabajos asignados. Acepta una solicitud del feed.
+          </Typography>
+        ) : null}
+        {orderedMine.map((request, index) => {
+          const status = getServiceStatus(request.status);
+          const distance = formatDistanceKm(request.distance_km);
+          return (
+            <Box
+              component="button"
+              type="button"
+              onClick={() => setDialogRequestId(request.id)}
+              key={request.id}
+              className={`w-full flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 px-5 py-4 text-left bg-paper hover:bg-primary-50/40 ${
+                index < orderedMine.length - 1 ? "border-b border-gray-200" : ""
               }`}
             >
               <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
@@ -322,6 +346,7 @@ export default function WorkerDashboard() {
         otherUserId={dialogRequest?.user_id}
         counterpartLabel={`Cliente #${dialogRequest?.user_id ?? ""}`}
         isWorker
+        workerId={workerId}
       />
     </Box>
   );
