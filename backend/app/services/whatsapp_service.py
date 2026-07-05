@@ -29,15 +29,16 @@ async def handle_incoming_message(event: dict) -> None:
     device_id = event.get("device_id", "")
     payload = event.get("payload") or {}
 
-    if payload.get("from_me"):
+    if payload.get("is_from_me") or payload.get("from_me"):
         return
 
     text = payload.get("body") or (payload.get("message") or {}).get("text")
     if not text:
+        logger.debug("Mensaje sin texto, ignorado: event=%s", event.get("event"))
         return
 
-    phone = payload.get("from") or payload.get("chat_jid") or ""
-    sender = payload.get("pushname") or phone
+    phone = payload.get("from") or payload.get("chat_jid") or payload.get("chat_id") or ""
+    sender = payload.get("from_name") or payload.get("pushname") or phone
     message_id = payload.get("id") or (payload.get("message") or {}).get("id")
 
     logger.info("[%s] %s: %s", device_id, sender, text)
