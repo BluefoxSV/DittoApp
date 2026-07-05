@@ -9,6 +9,27 @@ from app.services.worker_service import get_worker_profile
 from app.utils.geo import haversine_km
 
 
+def _client_name(request: ServiceRequest) -> str | None:
+    user = getattr(request, "user", None)
+    if user is None:
+        return None
+    profile = getattr(user, "profile", None)
+    return profile.full_name if profile else None
+
+
+def _serialize_request(
+    request: ServiceRequest,
+    *,
+    distance_km: float | None = None,
+) -> ServiceRequestWithDistance:
+    return ServiceRequestWithDistance.model_validate(request).model_copy(
+        update={
+            "client_name": _client_name(request),
+            "distance_km": distance_km,
+        }
+    )
+
+
 async def create_service_request(user_id: int, data: ServiceRequestCreate) -> ServiceRequest:
     user = await get_user_by_id(user_id)
     worker = None
@@ -39,9 +60,10 @@ async def get_service_request(request_id: int) -> ServiceRequest:
     return request
 
 
-async def list_user_requests(user_id: int) -> list[ServiceRequest]:
+async def list_user_requests(user_id: int) -> list[ServiceRequestWithDistance]:
     await get_user_by_id(user_id)
-    return await ServiceRequest.filter(user_id=user_id)
+    requests = await ServiceRequest.filter(user_id=user_id).prefetch_related("user__profile")
+    return [_serialize_request(request) for request in requests]
 
 
 async def list_worker_requests(
@@ -51,20 +73,19 @@ async def list_worker_requests(
     longitude: float | None = None,
 ) -> list[ServiceRequestWithDistance]:
     await get_worker_profile(worker_id)
-    requests = await ServiceRequest.filter(worker_id=worker_id)
+    requests = await ServiceRequest.filter(worker_id=worker_id).prefetch_related("user__profile")
 
     if latitude is None or longitude is None:
-        return [ServiceRequestWithDistance.model_validate(request) for request in requests]
+        return [_serialize_request(request) for request in requests]
 
     with_distance: list[ServiceRequestWithDistance] = []
     without_location: list[ServiceRequestWithDistance] = []
     for request in requests:
-        item = ServiceRequestWithDistance.model_validate(request)
         if request.latitude is None or request.longitude is None:
-            without_location.append(item)
+            without_location.append(_serialize_request(request))
             continue
         distance = round(haversine_km(latitude, longitude, request.latitude, request.longitude), 2)
-        with_distance.append(item.model_copy(update={"distance_km": distance}))
+        with_distance.append(_serialize_request(request, distance_km=distance))
 
     with_distance.sort(
         key=lambda item: (
@@ -73,6 +94,17 @@ async def list_worker_requests(
         )
     )
     return with_distance + without_location
+
+
+async def list_open_requests() -> list[ServiceRequestWithDistance]:
+    requests = await ServiceRequest.filter(
+        status=ServiceRequestStatus.PENDING,
+        worker_id__isnull=True,
+    ).prefetch_related("user__profile")
+    return [
+        _serialize_request(request)
+        for request in sorted(requests, key=lambda item: -item.created_at.timestamp())
+    ]
 
 
 async def list_nearby_open_requests(
@@ -84,18 +116,17 @@ async def list_nearby_open_requests(
     requests = await ServiceRequest.filter(
         status=ServiceRequestStatus.PENDING,
         worker_id__isnull=True,
-    )
+    ).prefetch_related("user__profile")
     nearby: list[ServiceRequestWithDistance] = []
     without_location: list[ServiceRequestWithDistance] = []
 
     for request in requests:
-        item = ServiceRequestWithDistance.model_validate(request)
         if request.latitude is None or request.longitude is None:
-            without_location.append(item)
+            without_location.append(_serialize_request(request))
             continue
         distance = haversine_km(latitude, longitude, request.latitude, request.longitude)
         if distance <= radius_km:
-            nearby.append(item.model_copy(update={"distance_km": round(distance, 2)}))
+            nearby.append(_serialize_request(request, distance_km=round(distance, 2)))
 
     nearby.sort(key=lambda item: item.distance_km or float("inf"))
     without_location.sort(key=lambda item: -item.created_at.timestamp())
