@@ -71,6 +71,7 @@ async def get_conversation_config() -> ElevenLabsConversationConfig:
     shared = {
         "prompt_override": prompt_override,
         "first_message_override": first_message_override,
+        "use_prompt_override": settings.elevenlabs_use_prompt_override,
         "min_follow_up_questions": settings.elevenlabs_min_follow_up_questions,
     }
 
