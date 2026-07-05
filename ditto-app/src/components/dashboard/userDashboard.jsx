@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -23,7 +23,6 @@ import {
 } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
-const LOCATION_PRECISION = 4;
 
 function requestTitle(request) {
   if (!request?.worker_id) return "Publicado en el feed — esperando trabajador";
@@ -42,21 +41,11 @@ export default function UserDashboard() {
   const userId = user?.id;
   const [description, setDescription] = useState("");
   const [dialogRequestId, setDialogRequestId] = useState(null);
+  const lastSyncedLocationRef = useRef("");
 
   const { coords, error: geoError, isLoading: isLoadingGeo, refresh: refreshGeo } =
     useGeolocation();
   const [updateUserLocation] = useUpdateUserLocationMutation();
-
-  const locationKey = coords
-    ? `${coords.latitude.toFixed(LOCATION_PRECISION)},${coords.longitude.toFixed(
-        LOCATION_PRECISION,
-      )}`
-    : "";
-  const stableCoords = useMemo(() => {
-    if (!locationKey) return null;
-    const [latitude, longitude] = locationKey.split(",").map(Number);
-    return { latitude, longitude };
-  }, [locationKey]);
 
   const {
     data: requests = [],
@@ -70,13 +59,16 @@ export default function UserDashboard() {
     useCreateServiceRequestMutation();
 
   useEffect(() => {
-    if (!userId || !stableCoords) return;
+    if (!userId || !coords) return;
+    const locationKey = `${coords.latitude},${coords.longitude}`;
+    if (lastSyncedLocationRef.current === locationKey) return;
+    lastSyncedLocationRef.current = locationKey;
     updateUserLocation({
       userId,
-      latitude: stableCoords.latitude,
-      longitude: stableCoords.longitude,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
     });
-  }, [userId, stableCoords, updateUserLocation]);
+  }, [userId, coords, updateUserLocation]);
 
   const orderedRequests = useMemo(
     () => [...requests].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
@@ -94,8 +86,8 @@ export default function UserDashboard() {
       const request = await createRequest({
         userId,
         description: cleanDescription,
-        latitude: stableCoords?.latitude,
-        longitude: stableCoords?.longitude,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
       }).unwrap();
       setDescription("");
       setDialogRequestId(request.id);
@@ -121,7 +113,7 @@ export default function UserDashboard() {
         <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
           Hola, {firstName} — ¿qué necesitas resolver hoy?
         </Typography>
-        <Box className="flex items-center gap-2">
+        <Box className="flex items-center gap-2 min-w-[120px] justify-end">
           {isLoadingGeo ? (
             <CircularProgress size={16} />
           ) : coords ? (
@@ -200,7 +192,7 @@ export default function UserDashboard() {
         </Alert>
       ) : null}
       <Box className="bg-primary-100 border border-primary-200 rounded-2xl overflow-hidden">
-        {isLoadingRequests ? (
+        {isLoadingRequests && orderedRequests.length === 0 ? (
           <Box className="p-8 flex justify-center">
             <CircularProgress size={28} />
           </Box>
