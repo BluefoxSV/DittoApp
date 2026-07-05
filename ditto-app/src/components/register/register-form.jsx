@@ -24,7 +24,7 @@ import {
   isValidProfession,
   WORK_PROFESSIONS,
 } from "../../constants/workProfessions";
-import { getFieldsByRole, ROLES } from "../../pages/profile/Profile.jsx";
+import { getFieldsByRole, buildFullName, ROLES } from "../../pages/profile/Profile.jsx";
 import { useLoginMutation, useRegisterMutation } from "../../store/api/authApi";
 import { useLazyGetMeQuery, useCreateProfileMutation } from "../../store/api/usersApi";
 import { useCreateWorkerProfileMutation } from "../../store/api/workersApi";
@@ -62,7 +62,15 @@ const PHONE_FIELD = {
 
 const PROFESSION_FIELD_KEY = "specializationArea";
 
-const BASE_PROFILE_KEYS = new Set(["name", "birthDate", "address", "state", "country"]);
+const NAME_FIELD_KEYS = new Set(["firstName", "lastName"]);
+const BASE_PROFILE_KEYS = new Set([
+  "firstName",
+  "lastName",
+  "birthDate",
+  "address",
+  "state",
+  "country",
+]);
 const WORKER_EXTRA_KEYS = new Set(["experience", "academicStudies", "completedCourses"]);
 
 const OTHER_WORKER_FIELD_MAP = {
@@ -72,7 +80,7 @@ const OTHER_WORKER_FIELD_MAP = {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const REQUIRED_FIELDS = ["email", "password", "confirmPassword", "name"];
+const REQUIRED_FIELDS = ["email", "password", "confirmPassword", "firstName", "lastName"];
 
 function validateRegisterForm(form) {
   const errors = {};
@@ -96,8 +104,12 @@ function validateRegisterForm(form) {
     errors.confirmPassword = "Las contraseñas no coinciden.";
   }
 
-  if (!form.name?.trim()) {
-    errors.name = "El nombre es obligatorio.";
+  if (!form.firstName?.trim()) {
+    errors.firstName = "Ingresa al menos un nombre.";
+  }
+
+  if (!form.lastName?.trim()) {
+    errors.lastName = "Ingresa al menos un apellido.";
   }
 
   if (form.role === ROLES.WORKER && !isValidProfession(form.specializationArea)) {
@@ -164,6 +176,10 @@ export default function RegisterForm() {
 
   const allProfileFields = getFieldsByRole(form.role);
   const baseProfileFields = allProfileFields.filter(({ key }) => BASE_PROFILE_KEYS.has(key));
+  const nameFields = baseProfileFields.filter(({ key }) => NAME_FIELD_KEYS.has(key));
+  const otherBaseProfileFields = baseProfileFields.filter(
+    ({ key }) => !NAME_FIELD_KEYS.has(key),
+  );
   const workerExtraFields = allProfileFields.filter(({ key }) => WORKER_EXTRA_KEYS.has(key));
   const isWorker = form.role === ROLES.WORKER;
 
@@ -191,8 +207,9 @@ export default function RegisterForm() {
     rows,
     type = "text",
     InputLabelProps,
+    autoComplete,
   }) => {
-    const isRequired = key === "name";
+    const isRequired = NAME_FIELD_KEYS.has(key);
     const fieldError = shouldShowError(key);
 
     return (
@@ -209,6 +226,7 @@ export default function RegisterForm() {
         multiline={multiline}
         rows={rows}
         InputLabelProps={InputLabelProps}
+        autoComplete={autoComplete}
         required={isRequired}
         error={fieldError}
         helperText={fieldError ? errors[key] : undefined}
@@ -238,9 +256,11 @@ export default function RegisterForm() {
 
       await login({ email: form.email, password: form.password }).unwrap();
 
+      const name = buildFullName(form.firstName, form.lastName);
+
       await createProfile({
         userId: user.id,
-        full_name: form.name.trim(),
+        full_name: name,
         phone: form.phone?.trim() || undefined,
         address: form.address?.trim() || undefined,
       }).unwrap();
@@ -392,7 +412,17 @@ export default function RegisterForm() {
                     Información personal
                   </Typography>
 
-                  {baseProfileFields.map(renderProfileField)}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "row" },
+                      gap: { xs: 0, sm: 2 },
+                    }}
+                  >
+                    {nameFields.map(renderProfileField)}
+                  </Box>
+
+                  {otherBaseProfileFields.map(renderProfileField)}
 
                   {isWorker && (
                     <FormControl

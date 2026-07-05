@@ -17,7 +17,8 @@ export const ROLES = {
 }
 
 const EMPTY_PROFILE = {
-  name: '',
+  firstName: '',
+  lastName: '',
   birthDate: '',
   address: '',
   state: '',
@@ -29,7 +30,8 @@ const EMPTY_PROFILE = {
 }
 
 const BASE_FIELDS = [
-  { key: 'name', labelKey: 'name', type: 'text' },
+  { key: 'firstName', labelKey: 'firstName', type: 'text', autoComplete: 'given-name' },
+  { key: 'lastName', labelKey: 'lastName', type: 'text', autoComplete: 'family-name' },
   {
     key: 'birthDate',
     label: 'Fecha de nacimiento',
@@ -73,16 +75,23 @@ function getProfileLabels(role) {
   return {
     isWorker,
     pageTitle: isWorker ? 'Perfil de trabajador' : 'Perfil de usuario',
-    nameLabel: isWorker ? 'Nombre del trabajador' : 'Nombre',
+    firstNameLabel: isWorker ? 'Nombre(s) del trabajador' : 'Nombre(s)',
+    lastNameLabel: 'Apellido(s)',
   }
 }
 
-export function getFieldsByRole(role) {
-  const { nameLabel } = getProfileLabels(role)
+export function buildFullName(firstName, lastName) {
+  return [firstName, lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
+}
 
-  const baseFields = BASE_FIELDS.map((field) =>
-    field.labelKey === 'name' ? { ...field, label: nameLabel } : field,
-  )
+export function getFieldsByRole(role) {
+  const { firstNameLabel, lastNameLabel } = getProfileLabels(role)
+
+  const baseFields = BASE_FIELDS.map((field) => {
+    if (field.labelKey === 'firstName') return { ...field, label: firstNameLabel }
+    if (field.labelKey === 'lastName') return { ...field, label: lastNameLabel }
+    return field
+  })
 
   if (role === ROLES.WORKER) {
     return [...baseFields, ...WORKER_ONLY_FIELDS]

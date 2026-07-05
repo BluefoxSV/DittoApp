@@ -2,7 +2,8 @@ import { Box, Divider, Typography } from '@mui/material'
 import Profile, { ROLES } from './Profile.jsx'
 
 const USER_SAMPLE_DATA = {
-  name: 'Carlos Mendoza',
+  firstName: 'Carlos',
+  lastName: 'Mendoza',
   birthDate: '1995-03-22',
   address: 'Calle Insurgentes 118',
   state: 'Jalisco',
@@ -10,7 +11,8 @@ const USER_SAMPLE_DATA = {
 }
 
 const WORKER_SAMPLE_DATA = {
-  name: 'María López',
+  firstName: 'María',
+  lastName: 'López',
   birthDate: '1992-08-14',
   address: 'Av. Reforma 245',
   state: 'Ciudad de México',
