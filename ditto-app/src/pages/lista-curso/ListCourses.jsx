@@ -46,6 +46,30 @@ const cursos = [
     imagen:
       'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=900&q=80',
   },
+  {
+    id: 5,
+    categoria: 'Diseño',
+    titulo: 'Diseño UI con Material UI',
+    descripcion: 'Explora componentes visuales y patrones de experiencia de usuario.',
+    imagen:
+      'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    id: 6,
+    categoria: 'Negocios',
+    titulo: 'Productividad y organización',
+    descripcion: 'Mejora tus procesos diarios con metodologías simples y efectivas.',
+    imagen:
+      'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    id: 7,
+    categoria: 'Negocios',
+    titulo: 'Productividad y organización',
+    descripcion: 'Mejora tus procesos diarios con metodologías simples y efectivas.',
+    imagen:
+      'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=900&q=80',
+  },
 ];
 
 export default function ListCourses() {
@@ -113,7 +137,7 @@ export default function ListCourses() {
                       <Typography variant="body2" color="text.secondary">
                         {curso.categoria}
                       </Typography>
-                      <Chip label="Nuevo" size="small" color="primary" />
+                      <Chip label="Nuevo" size="small" color="secondary" />
                     </Box>
                     <Typography
                       variant="h5"
@@ -143,10 +167,10 @@ export default function ListCourses() {
                   </Box>
                 </CardContent>
                 <CardActions sx={{ px: 2, pb: 2, mt: 'auto' }}>
-                  <Button size="small" variant="contained" sx={{ mr: 1 }}>
+                  <Button size="small" variant="contained" sx={{ mr: 1 }} color="secondary">
                     Ver curso
                   </Button>
-                  <Button size="small" variant="outlined">
+                  <Button size="small" variant="outlined" color="secondary">
                     Detalles
                   </Button>
                 </CardActions>
@@ -155,7 +179,7 @@ export default function ListCourses() {
           ))}
         </Box>
 
-        <Paper sx={{ mt: 4, p: 3 }}>
+        {/* <Paper sx={{ mt: 4, p: 3 }}>
           <Typography variant="h6" gutterBottom>
             ¿Quieres comenzar hoy?
           </Typography>
@@ -168,7 +192,7 @@ export default function ListCourses() {
             </Button>
             <Button variant="outlined">Cancelar</Button>
           </Box>
-        </Paper>
+        </Paper> */}
       </Container>
     </>
   );
