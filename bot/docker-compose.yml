@@ -1,9 +1,9 @@
 services:
   gowa:
     image: aldinokemal2104/go-whatsapp-web-multidevice:latest
-    command: rest
+    command: ["rest", "--base-path=/gowa"]
     ports:
-      - "3000:3000"
+      - "7000:3000"
     environment:
       APP_BASE_PATH: /gowa
       APP_TRUSTED_PROXIES: 0.0.0.0/0
