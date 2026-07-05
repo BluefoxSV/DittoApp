@@ -140,6 +140,45 @@ function VoiceIntakeBody({
   userId,
   coords,
   onClose,
+  clientTools,
+  finalSummary,
+  setFinalSummary,
+  descriptionBuilderRef,
+  elevenLabsUnavailable,
+  setElevenLabsUnavailable,
+  connectionError,
+  setConnectionError,
+}) {
+  const [micMuted, setMicMuted] = useState(true);
+
+  return (
+    <ConversationProvider
+      clientTools={clientTools}
+      isMuted={micMuted}
+      onMutedChange={setMicMuted}
+    >
+      <VoiceIntakeSession
+        userId={userId}
+        coords={coords}
+        onClose={onClose}
+        setMicMuted={setMicMuted}
+        finalSummary={finalSummary}
+        setFinalSummary={setFinalSummary}
+        descriptionBuilderRef={descriptionBuilderRef}
+        elevenLabsUnavailable={elevenLabsUnavailable}
+        setElevenLabsUnavailable={setElevenLabsUnavailable}
+        connectionError={connectionError}
+        setConnectionError={setConnectionError}
+      />
+    </ConversationProvider>
+  );
+}
+
+function VoiceIntakeSession({
+  userId,
+  coords,
+  onClose,
+  setMicMuted,
   finalSummary,
   setFinalSummary,
   descriptionBuilderRef,
@@ -152,7 +191,6 @@ function VoiceIntakeBody({
   const [initialDescription, setInitialDescription] = useState("");
   const [isConnecting, setIsConnecting] = useState(true);
   const [minFollowUp, setMinFollowUp] = useState(3);
-  const [micMuted, setMicMuted] = useState(true);
   const [isPttActive, setIsPttActive] = useState(false);
   const initialDescriptionRef = useRef("");
   const lastAgentTextRef = useRef("");
@@ -160,7 +198,10 @@ function VoiceIntakeBody({
   const summaryNudgeRef = useRef(false);
   const autoFinalizeRef = useRef(false);
   const contextSentRef = useRef(false);
+  const isConnectingRef = useRef(true);
   const sendContextualUpdateRef = useRef(null);
+  const startSessionRef = useRef(null);
+  const endSessionRef = useRef(null);
   const endRef = useRef(null);
 
   const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
@@ -230,7 +271,6 @@ function VoiceIntakeBody({
   );
 
   const conversation = useConversation({
-    micMuted,
     onMessage: (message) => {
       const userText = extractUserText(message);
       if (userText) {
@@ -244,6 +284,7 @@ function VoiceIntakeBody({
       }
     },
     onConnect: () => {
+      isConnectingRef.current = false;
       setConnectionError(null);
       setIsConnecting(false);
       window.setTimeout(() => {
@@ -255,6 +296,11 @@ function VoiceIntakeBody({
     },
     onStatusChange: (newStatus) => {
       if (newStatus === "connected") {
+        isConnectingRef.current = false;
+        setIsConnecting(false);
+      }
+      if (newStatus === "disconnected" && isConnectingRef.current) {
+        setConnectionError("No se pudo conectar con el asistente de voz. Intenta de nuevo.");
         setIsConnecting(false);
       }
     },
@@ -270,9 +316,10 @@ function VoiceIntakeBody({
             ? error.message
             : "Error en la conversación con ElevenLabs.";
 
-      if (message.toLowerCase().includes("disconnected")) return;
+      if (!isConnectingRef.current && message.toLowerCase().includes("disconnected")) return;
 
       setConnectionError(message);
+      isConnectingRef.current = false;
       setIsConnecting(false);
     },
   });
@@ -288,11 +335,26 @@ function VoiceIntakeBody({
 
   useEffect(() => {
     sendContextualUpdateRef.current = sendContextualUpdate;
-  }, [sendContextualUpdate]);
+    startSessionRef.current = startSession;
+    endSessionRef.current = endSession;
+  }, [sendContextualUpdate, startSession, endSession]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, finalSummary, isSpeaking]);
+
+  useEffect(() => {
+    if (!isConnecting) return undefined;
+
+    const timer = window.setTimeout(() => {
+      if (!isConnectingRef.current) return;
+      setConnectionError("La conexión con ElevenLabs tardó demasiado. Intenta de nuevo.");
+      isConnectingRef.current = false;
+      setIsConnecting(false);
+    }, 20000);
+
+    return () => window.clearTimeout(timer);
+  }, [isConnecting, setConnectionError]);
 
   useEffect(() => {
     if (!isConnected || finalSummary || summaryNudgeRef.current) return;
@@ -308,8 +370,9 @@ function VoiceIntakeBody({
     const attemptId = connectAttemptRef.current + 1;
     connectAttemptRef.current = attemptId;
     let cancelled = false;
+    isConnectingRef.current = true;
 
-    async function connect() {
+    async function connect(retry = 0) {
       try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
         const config = await fetchConversationConfig().unwrap();
@@ -319,7 +382,6 @@ function VoiceIntakeBody({
 
         const sessionOptions = {
           userId: userId ? String(userId) : undefined,
-          connectionType: "webrtc",
         };
 
         if (config.use_prompt_override === true && config.prompt_override) {
@@ -346,7 +408,28 @@ function VoiceIntakeBody({
           throw new Error("Configuración de ElevenLabs inválida.");
         }
 
-        startSession(sessionOptions);
+        const startFn = startSessionRef.current;
+        if (typeof startFn !== "function") {
+          if (retry < 8) {
+            window.setTimeout(() => connect(retry + 1), 150);
+          } else {
+            throw new Error("El asistente de voz no está listo. Cierra y vuelve a abrir.");
+          }
+          return;
+        }
+
+        startFn(sessionOptions);
+
+        if (retry === 0) {
+          window.setTimeout(() => {
+            if (cancelled || connectAttemptRef.current !== attemptId) return;
+            if (!isConnectingRef.current) return;
+            const retryFn = startSessionRef.current;
+            if (typeof retryFn === "function") {
+              retryFn(sessionOptions);
+            }
+          }, 600);
+        }
       } catch (error) {
         if (cancelled || connectAttemptRef.current !== attemptId) return;
         if (error?.status === 503 || error?.status === 502) {
@@ -358,27 +441,69 @@ function VoiceIntakeBody({
             getApiErrorMessage(error, "No se pudo iniciar la entrevista por voz."),
           );
         }
+        isConnectingRef.current = false;
         setIsConnecting(false);
       }
     }
 
-    connect();
+    const startTimer = window.setTimeout(() => connect(), 120);
 
     return () => {
       cancelled = true;
-      endConversationSession(endSession);
+      window.clearTimeout(startTimer);
+      endConversationSession(endSessionRef.current);
     };
-  }, [
-    userId,
-    fetchConversationConfig,
-    startSession,
-    endSession,
-    setConnectionError,
-    setElevenLabsUnavailable,
-  ]);
+  }, [userId, fetchConversationConfig, setConnectionError, setElevenLabsUnavailable]);
+
+  const handleRetryConnect = () => {
+    connectAttemptRef.current += 1;
+    isConnectingRef.current = true;
+    setIsConnecting(true);
+    setConnectionError(null);
+    endConversationSession(endSessionRef.current);
+    window.setTimeout(() => {
+      const attemptId = connectAttemptRef.current;
+      void (async () => {
+        try {
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+          const config = await fetchConversationConfig().unwrap();
+          if (connectAttemptRef.current !== attemptId) return;
+
+          const sessionOptions = {
+            userId: userId ? String(userId) : undefined,
+            overrides: {
+              agent: {
+                language: "es",
+                ...(config.use_prompt_override === true && config.prompt_override
+                  ? {
+                      prompt: { prompt: config.prompt_override },
+                      firstMessage: config.first_message_override,
+                    }
+                  : {}),
+              },
+            },
+          };
+
+          if (config.mode === "signed_url" && config.signed_url) {
+            sessionOptions.signedUrl = config.signed_url;
+          } else if (config.mode === "agent_id" && config.agent_id) {
+            sessionOptions.agentId = config.agent_id;
+          }
+
+          startSessionRef.current?.(sessionOptions);
+        } catch (error) {
+          setConnectionError(
+            getApiErrorMessage(error, "No se pudo reiniciar la entrevista por voz."),
+          );
+          isConnectingRef.current = false;
+          setIsConnecting(false);
+        }
+      })();
+    }, 200);
+  };
 
   const handleClose = () => {
-    endConversationSession(endSession);
+    endConversationSession(endSessionRef.current);
     onClose();
   };
 
@@ -441,9 +566,16 @@ function VoiceIntakeBody({
         </Box>
 
         {connectionError ? (
-          <Alert severity="error" className="mx-4 mt-4">
-            {connectionError}
-          </Alert>
+          <Box className="mx-4 mt-4 flex flex-col gap-2">
+            <Alert severity="error">{connectionError}</Alert>
+            <Button
+              variant="outlined"
+              onClick={handleRetryConnect}
+              sx={{ ...FONT, textTransform: "none", borderRadius: 3 }}
+            >
+              Reintentar conexión
+            </Button>
+          </Box>
         ) : null}
 
         {canRequestSummary ? (
@@ -525,7 +657,9 @@ function VoiceIntakeBody({
               ? "Mantén pulsado para hablar (suelta para enviar)"
               : isSpeaking
                 ? "Espera a que termine de hablar…"
-                : "Conectando…"}
+                : isConnecting
+                  ? "Conectando…"
+                  : "Sin conexión — usa Reintentar conexión"}
           </Typography>
           <Box
             component="button"
@@ -694,20 +828,19 @@ function VoiceAssistantDialog({
       </DialogTitle>
 
       {open ? (
-        <ConversationProvider clientTools={clientTools}>
-          <VoiceIntakeBody
-            userId={userId}
-            coords={coords}
-            onClose={handleClose}
-            finalSummary={finalSummary}
-            setFinalSummary={setFinalSummary}
-            descriptionBuilderRef={descriptionBuilderRef}
-            elevenLabsUnavailable={elevenLabsUnavailable}
-            setElevenLabsUnavailable={setElevenLabsUnavailable}
-            connectionError={connectionError}
-            setConnectionError={setConnectionError}
-          />
-        </ConversationProvider>
+        <VoiceIntakeBody
+          userId={userId}
+          coords={coords}
+          onClose={handleClose}
+          clientTools={clientTools}
+          finalSummary={finalSummary}
+          setFinalSummary={setFinalSummary}
+          descriptionBuilderRef={descriptionBuilderRef}
+          elevenLabsUnavailable={elevenLabsUnavailable}
+          setElevenLabsUnavailable={setElevenLabsUnavailable}
+          connectionError={connectionError}
+          setConnectionError={setConnectionError}
+        />
       ) : null}
 
       <DialogActions className="px-6 pb-5">
