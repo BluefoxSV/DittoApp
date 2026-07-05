@@ -29,6 +29,36 @@ import {
 } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
+const URL_PATTERN = /https?:\/\/[^\s]+/g;
+
+function renderDescriptionWithLinks(text) {
+  if (!text) return null;
+
+  const nodes = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(URL_PATTERN)) {
+    const url = match[0];
+    const start = match.index ?? 0;
+    if (start > lastIndex) nodes.push(text.slice(lastIndex, start));
+    nodes.push(
+      <Box
+        key={`${start}-${url}`}
+        component="a"
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={{ color: "#874cad", wordBreak: "break-all" }}
+      >
+        {url}
+      </Box>,
+    );
+    lastIndex = start + url.length;
+  }
+
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes;
+}
 
 function workerLabel(worker) {
   const name = worker?.full_name?.trim();
@@ -168,8 +198,9 @@ export default function ServiceRequestDialog({
             <Typography
               sx={{ ...FONT, color: "#676767" }}
               className="text-sm leading-relaxed mt-2 whitespace-pre-wrap"
+              component="div"
             >
-              {request.description}
+              {renderDescriptionWithLinks(request.description)}
             </Typography>
 
             <Box className="mt-5 rounded-2xl bg-primary-50 border border-primary-200 p-4">
