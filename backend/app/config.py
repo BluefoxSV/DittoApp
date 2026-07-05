@@ -11,5 +11,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
+    gowa_base_url: str = "http://localhost:3000"
+    gowa_device_id: str | None = None
+    gowa_webhook_secret: str = "secret"
+    whatsapp_api_key: str | None = None
+    n8n_webhook_url: str | None = None
+
 
 settings = Settings()

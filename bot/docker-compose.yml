@@ -1,0 +1,18 @@
+services:
+  gowa:
+    image: aldinokemal2104/go-whatsapp-web-multidevice:latest
+    command: rest
+    ports:
+      - "3000:3000"
+    environment:
+      WHATSAPP_WEBHOOK: https://kitsuneshin.com/api/whatsapp/webhook
+      WHATSAPP_WEBHOOK_SECRET: secret
+      WHATSAPP_WEBHOOK_EVENTS: message
+    volumes:
+      - gowa_data:/app/storages
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  gowa_data:
