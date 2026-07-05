@@ -2,10 +2,24 @@ import httpx
 from fastapi import HTTPException, status
 
 from app.config import settings
+from app.schemas.elevenlabs import ElevenLabsConversationConfig
 
 ELEVENLABS_SIGNED_URL = (
     "https://api.elevenlabs.io/v1/convai/conversation/get-signed-url"
 )
+
+
+def _extract_error_detail(response: httpx.Response, fallback: str) -> str:
+    try:
+        body = response.json()
+        detail = body.get("detail")
+        if isinstance(detail, str):
+            return detail
+        if isinstance(detail, dict) and detail.get("message"):
+            return detail["message"]
+    except Exception:
+        pass
+    return fallback
 
 
 async def get_signed_url() -> str:
@@ -23,18 +37,12 @@ async def get_signed_url() -> str:
         )
 
     if response.status_code != 200:
-        detail = "No se pudo obtener la URL firmada de ElevenLabs."
-        try:
-            body = response.json()
-            if isinstance(body.get("detail"), str):
-                detail = body["detail"]
-            elif isinstance(body.get("detail"), dict) and body["detail"].get("message"):
-                detail = body["detail"]["message"]
-        except Exception:
-            pass
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=detail,
+            detail=_extract_error_detail(
+                response,
+                "No se pudo obtener la URL firmada de ElevenLabs.",
+            ),
         )
 
     signed_url = response.json().get("signed_url")
@@ -45,3 +53,20 @@ async def get_signed_url() -> str:
         )
 
     return signed_url
+
+
+async def get_conversation_config() -> ElevenLabsConversationConfig:
+    if not settings.elevenlabs_agent_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ELEVENLABS_AGENT_ID no está configurado en el servidor.",
+        )
+
+    if settings.elevenlabs_use_signed_url:
+        signed_url = await get_signed_url()
+        return ElevenLabsConversationConfig(mode="signed_url", signed_url=signed_url)
+
+    return ElevenLabsConversationConfig(
+        mode="agent_id",
+        agent_id=settings.elevenlabs_agent_id,
+    )
