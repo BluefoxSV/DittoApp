@@ -1,21 +1,17 @@
-import { Box, Typography, Avatar, Chip, LinearProgress } from "@mui/material";
+import { Box, Typography, Avatar, Chip, LinearProgress, CircularProgress } from "@mui/material";
 import MetricCard from "./metricCard";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 
-const worker = {
-  name: "Carlos Méndez",
-  trade: "Electricista",
-  experienceLabel: "Experiencia: oficial (3 años)",
-  metrics: { completedCourses: 6, activeRequests: 3, rating: 4.8 },
-  requests: [
-    { client: "María Torres", service: "Instalación eléctrica", status: "Pendiente" },
-    { client: "Jorge Ruiz", service: "Reparación de panel", status: "En curso" },
-    { client: "Ana López", service: "Revisión general", status: "Completado" },
-  ],
-  courseProgress: [
-    { title: "Instalaciones eléctricas básicas", percent: 80 },
-    { title: "Atención al cliente", percent: 45 },
-  ],
-};
+const mockMetrics = { completedCourses: 6, activeRequests: 3, rating: 4.8 };
+const mockRequests = [
+  { client: "María Torres", service: "Instalación eléctrica", status: "Pendiente" },
+  { client: "Jorge Ruiz", service: "Reparación de panel", status: "En curso" },
+  { client: "Ana López", service: "Revisión general", status: "Completado" },
+];
+const mockCourseProgress = [
+  { title: "Instalaciones eléctricas básicas", percent: 80 },
+  { title: "Atención al cliente", percent: 45 },
+];
 
 const statusColor = {
   Pendiente: "text-primary-700 bg-primary-50",
@@ -27,6 +23,20 @@ const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 const avatarSx = { bgcolor: "#BB6AF0", color: "#fff", width: 40, height: 40, fontSize: 14, fontWeight: 700 };
 
 export default function WorkerDashboard() {
+  const { displayName, trade, initials, workerProfile, isLoading } = useCurrentUser();
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  const experienceLabel = workerProfile?.experience
+    ? `Experiencia: ${workerProfile.experience}`
+    : null;
+
   return (
     <Box
       sx={{ ...FONT, bgcolor: "#FCFCF5", color: "#1a1a1a", minHeight: "100%" }}
@@ -36,34 +46,37 @@ export default function WorkerDashboard() {
         <Box>
           <Typography sx={FONT} className="text-sm text-gray-600">Hola,</Typography>
           <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
-            {worker.name} — {worker.trade}
+            {displayName}
+            {trade ? ` — ${trade}` : ""}
           </Typography>
         </Box>
         <Box className="flex items-center gap-3">
-          <Chip
-            label={worker.experienceLabel}
-            title="Basado en años de experiencia y certificaciones, no en idiomas"
-            sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
-          />
-          <Avatar sx={avatarSx}>CM</Avatar>
+          {experienceLabel && (
+            <Chip
+              label={experienceLabel}
+              title="Basado en años de experiencia y certificaciones, no en idiomas"
+              sx={{ ...FONT, bgcolor: "#f4e7fd", color: "#874cad", fontWeight: 700 }}
+            />
+          )}
+          <Avatar sx={avatarSx}>{initials}</Avatar>
         </Box>
       </Box>
 
       <Box className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <MetricCard label="Cursos completados" value={worker.metrics.completedCourses} tone="primary" />
-        <MetricCard label="Solicitudes activas" value={worker.metrics.activeRequests} tone="gray" />
-        <MetricCard label="Calificación" value={worker.metrics.rating} tone="primary" />
+        <MetricCard label="Cursos completados" value={mockMetrics.completedCourses} tone="primary" />
+        <MetricCard label="Solicitudes activas" value={mockMetrics.activeRequests} tone="gray" />
+        <MetricCard label="Calificación" value={mockMetrics.rating} tone="primary" />
       </Box>
 
       <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
         Solicitudes recientes
       </Typography>
       <Box className="border border-gray-200 rounded-2xl overflow-hidden mb-8">
-        {worker.requests.map((r, i) => (
+        {mockRequests.map((r, i) => (
           <Box
             key={i}
             className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 px-5 py-4 ${
-              i < worker.requests.length - 1 ? "border-b border-gray-200" : ""
+              i < mockRequests.length - 1 ? "border-b border-gray-200" : ""
             }`}
           >
             <Typography sx={FONT} className="text-sm font-semibold text-gray-900 min-w-0 truncate">
@@ -82,7 +95,7 @@ export default function WorkerDashboard() {
         Progreso de aprendizaje
       </Typography>
       <Box className="flex flex-col gap-5">
-        {worker.courseProgress.map((c, i) => (
+        {mockCourseProgress.map((c, i) => (
           <Box key={i}>
             <Box className="flex justify-between text-sm font-medium text-gray-700 mb-2">
               <span className="min-w-0 truncate pr-2">{c.title}</span>

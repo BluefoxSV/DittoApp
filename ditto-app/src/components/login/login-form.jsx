@@ -17,12 +17,7 @@ import logo from "../../../src/assets/icon-192.png";
 import { useLoginMutation } from "../../store/api/authApi";
 import { useLazyGetMeQuery } from "../../store/api/usersApi";
 import { setCredentials } from "../../store/slices/authSlice";
-
-const DASHBOARD_BY_ROLE = {
-  worker: "/dashtrabaja",
-  user: "/dashusu",
-  support: "/dashusu",
-};
+import { getDashboardPath } from "../../utils/authRoutes";
 
 function getLoginErrorMessage(error) {
   if (!error) return "Ocurrió un error al iniciar sesión.";
@@ -60,8 +55,7 @@ export default function LoginForm() {
       const user = await fetchMe().unwrap();
       dispatch(setCredentials({ user }));
 
-      const dashboardPath = DASHBOARD_BY_ROLE[user.role] ?? "/";
-      navigate(dashboardPath);
+      navigate(getDashboardPath(user.role));
     } catch (err) {
       setError(getLoginErrorMessage(err));
     }

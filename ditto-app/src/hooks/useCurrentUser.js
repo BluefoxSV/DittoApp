@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { useGetMeQuery, useGetUserProfileQuery } from "../store/api/usersApi";
-import { useGetWorkersQuery } from "../store/api/workersApi";
+import { useGetWorkerProfileByUserIdQuery } from "../store/api/workersApi";
 import { logout, setCredentials } from "../store/slices/authSlice";
 
 function getInitials(fullName) {
@@ -41,16 +41,11 @@ export function useCurrentUser() {
   } = useGetUserProfileQuery(userId, { skip: !userId });
 
   const {
-    data: workers,
-    isLoading: isLoadingWorkers,
-    isFetching: isFetchingWorkers,
-    isError: isWorkersError,
-  } = useGetWorkersQuery(undefined, { skip: !userId || !isWorker });
-
-  const workerProfile = useMemo(
-    () => workers?.find((worker) => worker.user_id === userId) ?? null,
-    [workers, userId],
-  );
+    data: workerProfile,
+    isLoading: isLoadingWorkerProfile,
+    isFetching: isFetchingWorkerProfile,
+    isError: isWorkerProfileError,
+  } = useGetWorkerProfileByUserIdQuery(userId, { skip: !userId || !isWorker });
 
   useEffect(() => {
     if (fetchedUser) {
@@ -78,8 +73,8 @@ export function useCurrentUser() {
     isWorker &&
     Boolean(userId) &&
     !workerProfile &&
-    (isLoadingWorkers || isFetchingWorkers) &&
-    !isWorkersError;
+    (isLoadingWorkerProfile || isFetchingWorkerProfile) &&
+    !isWorkerProfileError;
 
   const displayName = profile?.full_name ?? currentUser?.email ?? "";
   const trade = workerProfile?.bio ?? null;

@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AppBar, Box, CircularProgress } from '@mui/material';
 import lazyMain from './lazyMain';
 
+import GuardedRoute from './components/auth/GuardedRoute';
 import Navbar from './components/layout/navBar';
 import Footer from './components/layout/footer';
 import SidebarNav from './components/layout/sidebarNav';
@@ -27,7 +28,11 @@ function AppRoutes() {
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
         {lazyMain.routes.map((route) => (
-          <Route key={route.path} path={route.path} element={route.element} />
+          <Route
+            key={route.path}
+            path={route.path}
+            element={<GuardedRoute path={route.path} element={route.element} />}
+          />
         ))}
       </Routes>
     </Suspense>

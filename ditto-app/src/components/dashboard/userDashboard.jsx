@@ -1,4 +1,5 @@
-import { Box, Typography, Avatar, Chip } from "@mui/material";
+import { Box, Typography, Avatar, Chip, CircularProgress } from "@mui/material";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 
 const suggestions = [
   { initials: "RM", name: "Rodrigo Martínez", trade: "Fontanería", rating: 4.9, highlight: true },
@@ -16,14 +17,31 @@ const activeService = {
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 const avatarSx = { bgcolor: "#BB6AF0", color: "#fff", width: 40, height: 40, fontSize: 14, fontWeight: 700 };
 
+function getFirstName(displayName) {
+  if (!displayName) return "";
+  if (displayName.includes("@")) return displayName.split("@")[0];
+  return displayName.trim().split(/\s+/)[0];
+}
+
 export default function UserDashboard() {
+  const { displayName, isLoading } = useCurrentUser();
+  const firstName = getFirstName(displayName);
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box
       sx={{ ...FONT, bgcolor: "#FCFCF5", color: "#1a1a1a", minHeight: "100%" }}
       className="p-4 md:p-8 min-w-0 w-full text-left"
     >
       <Typography sx={FONT} className="text-2xl font-bold text-gray-900 mb-6">
-        Hola, Sofía — ¿qué necesitas resolver hoy?
+        Hola, {firstName} — ¿qué necesitas resolver hoy?
       </Typography>
 
       <Box className="bg-primary-500 rounded-2xl p-5 mb-8">
