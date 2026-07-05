@@ -257,6 +257,7 @@ export default function UserDashboard() {
         open={intakeOpen}
         initialDescription={pendingDescription}
         userId={userId}
+        coords={coords}
         onClose={handleCloseIntake}
         onConfirm={handleConfirmIntake}
         onFallbackPublish={handleFallbackPublish}
