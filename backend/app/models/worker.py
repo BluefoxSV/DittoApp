@@ -10,6 +10,8 @@ class WorkerProfile(models.Model):
     contact_info = fields.TextField(null=True)
     is_verified = fields.BooleanField(default=False)
     classification_level = fields.IntField(default=0)
+    latitude = fields.FloatField(null=True)
+    longitude = fields.FloatField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 

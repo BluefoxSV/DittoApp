@@ -1,8 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.dependencies.auth import get_user, require_roles
+from app.dependencies.auth import get_user
 from app.models.user import User, UserRole
-from app.schemas.service import ServiceRequestCreate, ServiceRequestRead, ServiceRequestUpdate
+from app.schemas.service import (
+    ServiceRequestCreate,
+    ServiceRequestRead,
+    ServiceRequestUpdate,
+    ServiceRequestWithDistance,
+)
 from app.services import service_request_service, worker_service
 
 router = APIRouter(prefix="/service-requests", tags=["service-requests"])
@@ -26,12 +31,29 @@ async def list_user_requests(user_id: int, current_user: User = Depends(get_user
     return await service_request_service.list_user_requests(user_id)
 
 
-@router.get("/workers/{worker_id}", response_model=list[ServiceRequestRead])
-async def list_worker_requests(worker_id: int, current_user: User = Depends(get_user)):
+@router.get("/workers/{worker_id}", response_model=list[ServiceRequestWithDistance])
+async def list_worker_requests(
+    worker_id: int,
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
+    current_user: User = Depends(get_user),
+):
     worker = await worker_service.get_worker_profile(worker_id)
     if worker.user_id != current_user.id and current_user.role != UserRole.SUPPORT:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
-    return await service_request_service.list_worker_requests(worker_id)
+    return await service_request_service.list_worker_requests(worker_id, latitude=lat, longitude=lng)
+
+
+@router.get("/nearby", response_model=list[ServiceRequestWithDistance])
+async def list_nearby_requests(
+    lat: float = Query(ge=-90, le=90),
+    lng: float = Query(ge=-180, le=180),
+    radius_km: float = Query(default=50.0, gt=0, le=500),
+    current_user: User = Depends(get_user),
+):
+    if current_user.role not in {UserRole.WORKER, UserRole.SUPPORT}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    return await service_request_service.list_nearby_pending_requests(lat, lng, radius_km=radius_km)
 
 
 @router.patch("/{request_id}", response_model=ServiceRequestRead)
@@ -50,4 +72,11 @@ async def update_request(
     if not (is_owner or is_assigned_worker or is_support):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
 
-    return await service_request_service.update_service_request(request_id, data)
+    return await service_request_service.update_service_request(
+        request_id,
+        data,
+        current_user_id=current_user.id,
+        is_worker=is_assigned_worker,
+        is_owner=is_owner,
+        is_support=is_support,
+    )

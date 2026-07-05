@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.dependencies.auth import get_user, require_roles
 from app.models.user import User, UserRole
-from app.schemas.user import UserProfileCreate, UserProfileRead, UserProfileUpdate, UserRead
+from app.schemas.user import UserProfileCreate, UserProfileRead, UserProfileUpdate, UserRead, LocationUpdate
 from app.services import user_service
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -55,3 +55,14 @@ async def update_profile(
     if current_user.id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
     return await user_service.update_user_profile(user_id, data)
+
+
+@router.patch("/{user_id}/location", response_model=UserProfileRead)
+async def update_location(
+    user_id: int,
+    data: LocationUpdate,
+    current_user: User = Depends(get_user),
+):
+    if current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    return await user_service.update_user_location(user_id, data.latitude, data.longitude)

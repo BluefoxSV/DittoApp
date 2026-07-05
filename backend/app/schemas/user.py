@@ -25,12 +25,16 @@ class UserProfileCreate(BaseModel):
     full_name: str
     phone: str | None = None
     address: str | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class UserProfileUpdate(BaseModel):
     full_name: str | None = None
     phone: str | None = None
     address: str | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class UserProfileRead(BaseModel):
@@ -41,4 +45,11 @@ class UserProfileRead(BaseModel):
     full_name: str
     phone: str | None
     address: str | None
+    latitude: float | None = None
+    longitude: float | None = None
     created_at: datetime
+
+
+class LocationUpdate(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)

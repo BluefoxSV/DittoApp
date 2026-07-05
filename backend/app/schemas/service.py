@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.service import ServiceRequestStatus
 
@@ -8,10 +8,13 @@ from app.models.service import ServiceRequestStatus
 class ServiceRequestCreate(BaseModel):
     worker_id: int
     description: str
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class ServiceRequestUpdate(BaseModel):
-    status: ServiceRequestStatus
+    status: ServiceRequestStatus | None = None
+    worker_id: int | None = None
 
 
 class ServiceRequestRead(BaseModel):
@@ -21,5 +24,11 @@ class ServiceRequestRead(BaseModel):
     user_id: int
     worker_id: int
     description: str
+    latitude: float | None = None
+    longitude: float | None = None
     status: ServiceRequestStatus
     created_at: datetime
+
+
+class ServiceRequestWithDistance(ServiceRequestRead):
+    distance_km: float | None = None

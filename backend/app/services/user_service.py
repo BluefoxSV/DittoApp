@@ -58,3 +58,19 @@ async def update_user_profile(user_id: int, data: UserProfileUpdate) -> UserProf
     await profile.update_from_dict(data.model_dump(exclude_unset=True))
     await profile.save()
     return profile
+
+
+async def update_user_location(user_id: int, latitude: float, longitude: float) -> UserProfile:
+    profile = await UserProfile.get_or_none(user_id=user_id)
+    if not profile:
+        user = await get_user_by_id(user_id)
+        return await UserProfile.create(
+            user=user,
+            full_name=user.email.split("@")[0],
+            latitude=latitude,
+            longitude=longitude,
+        )
+    profile.latitude = latitude
+    profile.longitude = longitude
+    await profile.save()
+    return profile

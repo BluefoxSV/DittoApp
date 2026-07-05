@@ -31,6 +31,8 @@ class UserProfile(models.Model):
     full_name = fields.CharField(max_length=255)
     phone = fields.CharField(max_length=50, null=True)
     address = fields.TextField(null=True)
+    latitude = fields.FloatField(null=True)
+    longitude = fields.FloatField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 

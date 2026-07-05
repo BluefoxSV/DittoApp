@@ -2,8 +2,9 @@ from fastapi import HTTPException, status
 
 from app.models.user import UserRole
 from app.models.worker import WorkerProfile
-from app.schemas.worker import WorkerProfileCreate, WorkerProfileUpdate
+from app.schemas.worker import WorkerProfileCreate, WorkerProfileUpdate, WorkerProfileWithDistance
 from app.services.user_service import get_user_by_id
+from app.utils.geo import haversine_km
 
 
 async def create_worker_profile(user_id: int, data: WorkerProfileCreate) -> WorkerProfile:
@@ -39,15 +40,49 @@ async def get_worker_profile_by_user_id(user_id: int) -> WorkerProfile:
     return profile
 
 
-async def list_worker_profiles(verified_only: bool = False) -> list[WorkerProfile]:
+async def list_worker_profiles(
+    verified_only: bool = False,
+    *,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    radius_km: float = 100.0,
+) -> list[WorkerProfileWithDistance]:
     query = WorkerProfile.all()
     if verified_only:
         query = query.filter(is_verified=True)
-    return await query
+    workers = await query
+
+    if latitude is None or longitude is None:
+        return [WorkerProfileWithDistance.model_validate(worker) for worker in workers]
+
+    with_distance: list[WorkerProfileWithDistance] = []
+    without_location: list[WorkerProfileWithDistance] = []
+    for worker in workers:
+        if worker.latitude is None or worker.longitude is None:
+            without_location.append(WorkerProfileWithDistance.model_validate(worker))
+            continue
+        distance = haversine_km(latitude, longitude, worker.latitude, worker.longitude)
+        if distance <= radius_km:
+            with_distance.append(
+                WorkerProfileWithDistance.model_validate(worker).model_copy(
+                    update={"distance_km": round(distance, 2)}
+                )
+            )
+
+    with_distance.sort(key=lambda item: item.distance_km or float("inf"))
+    return with_distance + without_location
 
 
 async def update_worker_profile(worker_id: int, data: WorkerProfileUpdate) -> WorkerProfile:
     profile = await get_worker_profile(worker_id)
     await profile.update_from_dict(data.model_dump(exclude_unset=True))
+    await profile.save()
+    return profile
+
+
+async def update_worker_location(worker_id: int, latitude: float, longitude: float) -> WorkerProfile:
+    profile = await get_worker_profile(worker_id)
+    profile.latitude = latitude
+    profile.longitude = longitude
     await profile.save()
     return profile
