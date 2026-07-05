@@ -1,5 +1,5 @@
 import { Box, Divider, Typography } from '@mui/material'
-import Profile, { ROLES } from './Profile.jsx'
+import { Profile, ROLES } from './Profile.jsx'
 
 const USER_SAMPLE_DATA = {
   firstName: 'Carlos',

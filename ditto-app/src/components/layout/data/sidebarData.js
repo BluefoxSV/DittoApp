@@ -17,7 +17,7 @@ export const SIDEBAR_ITEMS = {
       { key: "dashboard", to: "/dashtrabaja", icon: "ti-layout-dashboard", label: "Dashboard" },
       { key: "courses", to: "/lista-curso", icon: "ti-school", label: "Cursos" },
       { key: "chat", to: "/chat", icon: "ti-message-circle", label: "Chat con clientes" },
-      { key: "profile", to: "/perfil", icon: "ti-user", label: "Perfil" },
+      { key: "profile", to: "/profile", icon: "ti-user", label: "Perfil" },
     ],
     user: [
       { key: "chatAI", to: "/dashusu", icon: "ti-sparkles", label: "Inicio · Chat IA" },

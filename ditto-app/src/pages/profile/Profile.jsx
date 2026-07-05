@@ -1,24 +1,81 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  AppBar,
+  Alert,
   Box,
   Button,
-  Container,
-  Paper,
+  CircularProgress,
   Stack,
   TextField,
-  Toolbar,
   Typography,
 } from '@mui/material'
+
+import { useCurrentUser } from '../../hooks/useCurrentUser'
+import { useGetCoursesQuery, useGetWorkerCourseEnrollmentsQuery } from '../../store/api/coursesApi'
 
 export const ROLES = {
   WORKER: 'worker',
   USER: 'user',
 }
 
+const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" }
+const BRAND = {
+  primary: '#BB6AF0',
+  primaryDark: '#874cad',
+  paper: '#FCFCF5',
+}
+
+const WORKER_FIELD_KEYS = new Set([
+  'specializationArea',
+  'experience',
+  'academicStudies',
+  'completedCourses',
+])
+
+function getTextFieldSx(isEditing) {
+  return {
+    ...FONT,
+    '& .MuiOutlinedInput-root': {
+      borderRadius: 2.5,
+      bgcolor: isEditing ? '#fff' : '#f4e7fd',
+      '& fieldset': {
+        borderColor: isEditing ? '#e9d5ff' : '#e9d5ff',
+      },
+      '&:hover fieldset': {
+        borderColor: isEditing ? BRAND.primary : '#e9d5ff',
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: BRAND.primary,
+      },
+    },
+    '& .MuiInputLabel-root': {
+      ...FONT,
+      color: '#6b7280',
+    },
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: BRAND.primary,
+    },
+    '& .MuiOutlinedInput-input': {
+      ...FONT,
+      color: '#1a1a1a',
+    },
+  }
+}
+
+function ProfilePageShell({ children }) {
+  return (
+    <Box
+      sx={{ ...FONT, bgcolor: BRAND.paper, color: '#1a1a1a', minHeight: '100%' }}
+      className="p-4 md:p-8 min-w-0 w-full text-left"
+    >
+      {children}
+    </Box>
+  )
+}
+
 const EMPTY_PROFILE = {
   firstName: '',
   lastName: '',
+  phone: '',
   birthDate: '',
   address: '',
   state: '',
@@ -32,6 +89,7 @@ const EMPTY_PROFILE = {
 const BASE_FIELDS = [
   { key: 'firstName', labelKey: 'firstName', type: 'text', autoComplete: 'given-name' },
   { key: 'lastName', labelKey: 'lastName', type: 'text', autoComplete: 'family-name' },
+  { key: 'phone', label: 'Teléfono', type: 'tel', autoComplete: 'tel' },
   {
     key: 'birthDate',
     label: 'Fecha de nacimiento',
@@ -84,6 +142,57 @@ export function buildFullName(firstName, lastName) {
   return [firstName, lastName].map((part) => part?.trim()).filter(Boolean).join(' ')
 }
 
+export function splitFullName(fullName) {
+  const parts = fullName?.trim().split(/\s+/) ?? []
+
+  if (parts.length === 0) {
+    return { firstName: '', lastName: '' }
+  }
+
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' }
+  }
+
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+}
+
+export function mapApiToProfileForm({
+  profile,
+  workerProfile,
+  enrollments = [],
+  courses = [],
+}) {
+  const { firstName, lastName } = splitFullName(profile?.full_name)
+  const courseById = new Map(courses.map((course) => [course.id, course.title]))
+
+  const completedCourses = enrollments
+    .filter((enrollment) => enrollment.status === 'completed')
+    .map((enrollment) => courseById.get(enrollment.course_id) ?? `Curso #${enrollment.course_id}`)
+    .join(', ')
+
+  const base = {
+    firstName,
+    lastName,
+    phone: profile?.phone ?? '',
+    birthDate: '',
+    address: profile?.address ?? '',
+    state: '',
+    country: '',
+  }
+
+  if (!workerProfile) {
+    return base
+  }
+
+  return {
+    ...base,
+    specializationArea: workerProfile.bio ?? '',
+    experience: workerProfile.experience ?? '',
+    academicStudies: workerProfile.academic_history ?? '',
+    completedCourses,
+  }
+}
+
 export function getFieldsByRole(role) {
   const { firstNameLabel, lastNameLabel } = getProfileLabels(role)
 
@@ -100,6 +209,25 @@ export function getFieldsByRole(role) {
   return baseFields
 }
 
+function isIsoDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value ?? '')
+}
+
+function formatBirthDate(value) {
+  if (!isIsoDate(value)) return ''
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
+}
+
+function resolveFieldValue({ type, rawValue, isEditing, emptyValue }) {
+  if (type === 'date') {
+    if (isIsoDate(rawValue)) return rawValue
+    return isEditing ? '' : emptyValue
+  }
+
+  return rawValue || (isEditing ? '' : emptyValue)
+}
+
 function ProfileField({
   label,
   value,
@@ -110,33 +238,104 @@ function ProfileField({
   type = 'text',
   InputLabelProps,
 }) {
+  const isEditing = !readOnly
+  const isDateField = type === 'date'
+  const hasDateValue = isDateField && isIsoDate(value)
+
+  const textFieldProps = {
+    fullWidth: true,
+    label,
+    onChange,
+    multiline,
+    rows,
+    variant: 'outlined',
+    InputProps: { readOnly },
+    sx: getTextFieldSx(isEditing),
+  }
+
+  if (isDateField && readOnly) {
+    return (
+      <TextField
+        {...textFieldProps}
+        type="text"
+        value={hasDateValue ? formatBirthDate(value) : value || '—'}
+        InputLabelProps={{ shrink: true, ...InputLabelProps }}
+      />
+    )
+  }
+
+  if (isDateField) {
+    return (
+      <TextField
+        {...textFieldProps}
+        type="date"
+        value={hasDateValue ? value : ''}
+        placeholder=" "
+        InputLabelProps={{ shrink: true, ...InputLabelProps }}
+      />
+    )
+  }
+
   return (
     <TextField
-      fullWidth
-      label={label}
+      {...textFieldProps}
       value={value}
-      onChange={onChange}
-      multiline={multiline}
-      rows={rows}
       type={type}
-      variant="outlined"
       InputLabelProps={InputLabelProps}
-      InputProps={{ readOnly }}
     />
   )
 }
 
-export default function Profile({
+function ProfileFieldSection({ title, fields, isEditing, displayData, emptyValue, onFieldChange }) {
+  return (
+    <Box className="border border-gray-200 rounded-2xl bg-paper p-5 md:p-6">
+      <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+        {title}
+      </Typography>
+
+      <Stack spacing={2.5}>
+        {fields.map(({ key, label, multiline, rows, type = 'text', InputLabelProps }) => (
+          <ProfileField
+            key={key}
+            label={label}
+            value={resolveFieldValue({
+              type,
+              rawValue: displayData[key],
+              isEditing,
+              emptyValue,
+            })}
+            onChange={onFieldChange(key)}
+            readOnly={!isEditing}
+            multiline={multiline}
+            rows={rows}
+            type={type}
+            InputLabelProps={InputLabelProps}
+          />
+        ))}
+      </Stack>
+    </Box>
+  )
+}
+
+export function Profile({
   role = ROLES.USER,
   initialData = {},
   onSave,
 }) {
   const { pageTitle } = getProfileLabels(role)
-  const visibleFields = getFieldsByRole(role)
+  const allFields = getFieldsByRole(role)
+  const personalFields = allFields.filter((field) => !WORKER_FIELD_KEYS.has(field.key))
+  const professionalFields = allFields.filter((field) => WORKER_FIELD_KEYS.has(field.key))
 
   const [isEditing, setIsEditing] = useState(false)
   const [profile, setProfile] = useState({ ...EMPTY_PROFILE, ...initialData })
   const [draft, setDraft] = useState(profile)
+
+  useEffect(() => {
+    const nextProfile = { ...EMPTY_PROFILE, ...initialData }
+    setProfile(nextProfile)
+    setDraft((currentDraft) => (isEditing ? currentDraft : nextProfile))
+  }, [initialData, isEditing])
 
   const displayData = isEditing ? draft : profile
   const emptyValue = '—'
@@ -161,63 +360,155 @@ export default function Profile({
     onSave?.(draft)
   }
 
-  const getFieldValue = (field) => displayData[field] || (isEditing ? '' : emptyValue)
-
   return (
-    <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {pageTitle}
-          </Typography>
-          {!isEditing && (
-            <Button color="inherit" variant="outlined" onClick={handleEdit}>
-              Editar
-            </Button>
-          )}
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth={false} disableGutters sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
+    <ProfilePageShell>
+      <Box className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <Typography sx={FONT} className="text-2xl font-bold text-gray-900">
           {pageTitle}
         </Typography>
+        {!isEditing && (
+          <Button
+            variant="contained"
+            onClick={handleEdit}
+            sx={{
+              ...FONT,
+              bgcolor: BRAND.primary,
+              fontWeight: 700,
+              textTransform: 'none',
+              borderRadius: 2.5,
+              boxShadow: 'none',
+              '&:hover': { bgcolor: '#a55dd3', boxShadow: 'none' },
+            }}
+          >
+            Editar
+          </Button>
+        )}
+      </Box>
 
-        <Paper sx={{ mt: 4, p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Información personal
-          </Typography>
+      <Stack spacing={3}>
+        <ProfileFieldSection
+          title="Información personal"
+          fields={personalFields}
+          isEditing={isEditing}
+          displayData={displayData}
+          emptyValue={emptyValue}
+          onFieldChange={handleChange}
+        />
 
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            {visibleFields.map(
-              ({ key, label, multiline, rows, type = 'text', InputLabelProps }) => (
-                <ProfileField
-                  key={key}
-                  label={label}
-                  value={getFieldValue(key)}
-                  onChange={handleChange(key)}
-                  readOnly={!isEditing}
-                  multiline={multiline}
-                  rows={rows}
-                  type={type}
-                  InputLabelProps={InputLabelProps}
-                />
-              ),
-            )}
-          </Stack>
+        {professionalFields.length > 0 ? (
+          <Box className="border border-primary-200 rounded-2xl bg-primary-50 p-5 md:p-6">
+            <Typography sx={FONT} className="text-lg font-bold text-gray-900 mb-4">
+              Información profesional
+            </Typography>
 
-          {isEditing && (
-            <Box sx={{ mt: 3, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-              <Button variant="outlined" onClick={handleCancel}>
-                Cancelar
-              </Button>
-              <Button variant="contained" color="primary" onClick={handleSave}>
-                Guardar
-              </Button>
-            </Box>
-          )}
-        </Paper>
-      </Container>
-    </>
+            <Stack spacing={2.5}>
+              {professionalFields.map(
+                ({ key, label, multiline, rows, type = 'text', InputLabelProps }) => (
+                  <ProfileField
+                    key={key}
+                    label={label}
+                    value={displayData[key] || (isEditing ? '' : emptyValue)}
+                    onChange={handleChange(key)}
+                    readOnly={!isEditing}
+                    multiline={multiline}
+                    rows={rows}
+                    type={type}
+                    InputLabelProps={InputLabelProps}
+                  />
+                ),
+              )}
+            </Stack>
+          </Box>
+        ) : null}
+      </Stack>
+
+      {isEditing && (
+        <Box sx={{ mt: 3, display: 'flex', gap: 1.5, justifyContent: 'flex-end' }}>
+          <Button
+            variant="outlined"
+            onClick={handleCancel}
+            sx={{
+              ...FONT,
+              borderColor: BRAND.primaryDark,
+              color: BRAND.primaryDark,
+              fontWeight: 700,
+              textTransform: 'none',
+              borderRadius: 2.5,
+              '&:hover': {
+                borderColor: BRAND.primaryDark,
+                bgcolor: '#f4e7fd',
+              },
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            sx={{
+              ...FONT,
+              bgcolor: BRAND.primary,
+              fontWeight: 700,
+              textTransform: 'none',
+              borderRadius: 2.5,
+              boxShadow: 'none',
+              '&:hover': { bgcolor: '#a55dd3', boxShadow: 'none' },
+            }}
+          >
+            Guardar
+          </Button>
+        </Box>
+      )}
+    </ProfilePageShell>
   )
 }
+
+function ProfilePage() {
+  const { user, profile, workerProfile, isLoading } = useCurrentUser()
+  const workerId = workerProfile?.id
+  const isWorker = user?.role === 'worker'
+
+  const { data: enrollments = [] } = useGetWorkerCourseEnrollmentsQuery(workerId, {
+    skip: !isWorker || !workerId,
+  })
+  const { data: courses = [] } = useGetCoursesQuery(undefined, {
+    skip: !isWorker || !workerId,
+  })
+
+  const initialData = useMemo(
+    () => mapApiToProfileForm({ profile, workerProfile, enrollments, courses }),
+    [profile, workerProfile, enrollments, courses],
+  )
+
+  const role = isWorker ? ROLES.WORKER : ROLES.USER
+
+  if (isLoading) {
+    return (
+      <ProfilePageShell>
+        <Box className="min-h-[60vh] flex items-center justify-center">
+          <CircularProgress sx={{ color: BRAND.primary }} />
+        </Box>
+      </ProfilePageShell>
+    )
+  }
+
+  if (!user) {
+    return (
+      <ProfilePageShell>
+        <Alert severity="warning">Inicia sesión para ver tu perfil.</Alert>
+      </ProfilePageShell>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <ProfilePageShell>
+        <Alert severity="info">Aún no has completado tu perfil.</Alert>
+      </ProfilePageShell>
+    )
+  }
+
+  return <Profile role={role} initialData={initialData} />
+}
+
+export default ProfilePage
