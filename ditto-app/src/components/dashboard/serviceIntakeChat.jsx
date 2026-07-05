@@ -79,6 +79,22 @@ function buildLocalSummary(messages, initialDescription) {
   return parts.join("\n");
 }
 
+function isAgentReadyToPublish(text) {
+  const normalized = text.toLowerCase();
+  const markers = [
+    "procederé a publicar",
+    "procedere a publicar",
+    "voy a publicar",
+    "publicar la solicitud",
+    "publicaremos",
+    "solicitud quedará publicada",
+    "publicar tu solicitud",
+    "coordinar la visita",
+    "publicación de tu solicitud",
+  ];
+  return markers.some((marker) => normalized.includes(marker));
+}
+
 function extractAgentText(message) {
   if (typeof message === "string") return message.trim();
   if (!message || typeof message !== "object") return "";
@@ -125,6 +141,7 @@ function IntakeChatBody({
   const endRef = useRef(null);
   const connectAttemptRef = useRef(0);
   const summaryNudgeRef = useRef(false);
+  const autoFinalizeRef = useRef(false);
   const sendUserMessageRef = useRef(null);
   const sendContextualUpdateRef = useRef(null);
   const initialDescriptionRef = useRef(initialDescription);
@@ -158,6 +175,22 @@ function IntakeChatBody({
     }
   }, [setConnectionError]);
 
+  const maybeAutoFinalize = useCallback(
+    (agentText) => {
+      if (autoFinalizeRef.current || finalSummary) return;
+
+      const cleanText = agentText?.trim();
+      if (!cleanText || !isAgentReadyToPublish(cleanText)) return;
+
+      const answered = Math.max(0, messages.filter(({ role }) => role === "user").length - 1);
+      if (answered < minFollowUp) return;
+
+      autoFinalizeRef.current = true;
+      setFinalSummary(buildLocalSummary(messages, initialDescription));
+    },
+    [finalSummary, initialDescription, messages, minFollowUp, setFinalSummary],
+  );
+
   const appendAgentText = (text) => {
     const cleanText = text.trim();
     if (!cleanText || cleanText === lastAgentTextRef.current) return;
@@ -170,6 +203,7 @@ function IntakeChatBody({
       }
       return [...prev, { role: "agent", text: cleanText, id: Date.now() }];
     });
+    maybeAutoFinalize(cleanText);
   };
 
   const conversation = useConversation({
@@ -228,7 +262,10 @@ function IntakeChatBody({
           const index = prev.findIndex((item) => item.id === streamingIdRef.current);
           if (index === -1) return prev;
           const finalText = prev[index]?.text?.trim() ?? "";
-          if (finalText) lastAgentTextRef.current = finalText;
+          if (finalText) {
+            lastAgentTextRef.current = finalText;
+            maybeAutoFinalize(finalText);
+          }
           return prev.map((item) =>
             item.id === streamingIdRef.current ? { ...item, streaming: false } : item,
           );
@@ -343,6 +380,7 @@ function IntakeChatBody({
     initialSentRef.current = false;
     lastAgentTextRef.current = "";
     summaryNudgeRef.current = false;
+    autoFinalizeRef.current = false;
 
     async function connect() {
       try {
@@ -643,7 +681,16 @@ function IntakeChatBody({
           onClick={() => onConfirm(finalSummary)}
           sx={{ ...FONT, textTransform: "none", bgcolor: "#BB6AF0", "&:hover": { bgcolor: "#a855df" } }}
         >
-          {isPublishing ? <CircularProgress size={18} color="inherit" /> : "Confirmar y publicar"}
+          {isPublishing ? (
+            <>
+              <CircularProgress size={18} color="inherit" />
+              <Box component="span" sx={{ ml: 1 }}>
+                Publicando solicitud...
+              </Box>
+            </>
+          ) : (
+            "Confirmar y publicar"
+          )}
         </Button>
       </DialogActions>
     </>
@@ -662,12 +709,24 @@ export default function ServiceIntakeChat({
   const [finalSummary, setFinalSummary] = useState("");
   const [connectionError, setConnectionError] = useState(null);
   const [elevenLabsUnavailable, setElevenLabsUnavailable] = useState(false);
+  const autoPublishRef = useRef(false);
 
   const registerSummary = useCallback((resumen) => {
     const summary = typeof resumen === "string" ? resumen.trim() : "";
     if (summary) setFinalSummary(summary);
-    return "Resumen registrado. El usuario puede publicar.";
+    return "Resumen registrado. Publicando solicitud en DittoApp.";
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      autoPublishRef.current = false;
+      return;
+    }
+    if (!finalSummary || isPublishing || autoPublishRef.current) return;
+
+    autoPublishRef.current = true;
+    void onConfirm(finalSummary);
+  }, [open, finalSummary, isPublishing, onConfirm]);
 
   const clientTools = useMemo(
     () => ({
@@ -678,6 +737,7 @@ export default function ServiceIntakeChat({
   );
 
   const handleClose = () => {
+    autoPublishRef.current = false;
     setFinalSummary("");
     setConnectionError(null);
     setElevenLabsUnavailable(false);
