@@ -23,6 +23,7 @@ class ServiceRequestRead(BaseModel):
 
     id: int
     user_id: int
+    client_name: str | None = None
     worker_id: int | None = None
     description: str
     latitude: float | None = None
