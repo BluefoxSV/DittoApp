@@ -1,95 +1,586 @@
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
-import { Box, Typography, Tooltip } from "@mui/material";
-import logo from "../../assets/ditto.png"; // ajustar si el logo está en otra ruta
 
-// Agente "Manolo" (público). Si el agente pasa a privado, hay que pedir una
-// signedUrl al backend en vez de usar agentId directo.
-const AGENT_ID = "agent_4301kwr4p8xheyvb6zy89je5wrbx";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { useGeolocation } from "../../hooks/useGeolocation";
+import { useLazyGetConversationConfigQuery } from "../../store/api/elevenlabsApi";
+import { useCreateServiceRequestMutation } from "../../store/api/serviceRequestsApi";
+import { getApiErrorMessage } from "../dashboard/serviceRequestUi";
+import logo from "../../assets/ditto.png";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
 
-function VoiceBubble() {
-  const [error, setError] = useState(null);
+const DITTOAPP_SESSION_CONTEXT =
+  "Modo entrevista DittoApp: el cliente PUBLICA una solicitud para que un trabajador especializado vaya a su domicilio. Prohibido diagnosticar, dar tips, listas de causas o soluciones caseras. Cuando ya tengas la info necesaria, termina tu respuesta con exactamente [[DITTO_PUBLICAR]] (sin espacios extra).";
 
-  const conversation = useConversation({
-    onConnect: () => setError(null),
-    onError: (e) => setError(typeof e === "string" ? e : "Error de conexión"),
-  });
+const DITTO_PUBLISH_KEYWORD = "[[DITTO_PUBLICAR]]";
 
-  const status = conversation.status; // "disconnected" | "connecting" | "connected"
-  const isActive = status === "connected";
-  const isConnecting = status === "connecting";
-  const isSpeaking = conversation.isSpeaking;
+function containsPublishKeyword(text) {
+  return text.includes(DITTO_PUBLISH_KEYWORD);
+}
 
-  const start = useCallback(async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      await conversation.startSession({
-        agentId: AGENT_ID,
-        connectionType: "webrtc",
-      });
-    } catch (e) {
-      setError("Necesito permiso de micrófono para hablar.");
+function stripPublishKeyword(text) {
+  return text.replaceAll(DITTO_PUBLISH_KEYWORD, "").trim();
+}
+
+function endConversationSession(endSession) {
+  if (typeof endSession === "function") {
+    endSession();
+  }
+}
+
+function buildGeoSection(coords) {
+  const lat = Number(coords?.latitude);
+  const lng = Number(coords?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return [
+      "",
+      "Ubicación GPS del cliente:",
+      "No disponible. Usa la dirección indicada en la entrevista.",
+    ].join("\n");
+  }
+
+  return [
+    "",
+    "Ubicación GPS del cliente:",
+    `Coordenadas: ${lat}, ${lng}`,
+    `Google Maps: https://www.google.com/maps?q=${lat},${lng}`,
+    `Waze: https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+  ].join("\n");
+}
+
+function extractInterviewPairs(messages) {
+  const pairs = [];
+  let pendingQuestion = null;
+
+  for (const message of messages) {
+    const text = stripPublishKeyword(message.text ?? "").trim();
+    if (!text) continue;
+
+    if (message.role === "agent") {
+      pendingQuestion = text;
+      continue;
     }
-  }, [conversation]);
 
-  const stop = useCallback(async () => {
-    await conversation.endSession();
-  }, [conversation]);
+    if (message.role === "user" && pendingQuestion) {
+      pairs.push({ question: pendingQuestion, answer: text });
+      pendingQuestion = null;
+    }
+  }
 
-  const toggle = () => (isActive || isConnecting ? stop() : start());
+  return pairs;
+}
+
+function buildPublishDescription(messages, initialDescription, coords) {
+  const parts = [`Problema inicial: ${initialDescription.trim()}`];
+  const pairs = extractInterviewPairs(messages);
+
+  if (pairs.length > 0) {
+    parts.push("", "Entrevista:");
+    pairs.forEach(({ question, answer }, index) => {
+      parts.push(`P${index + 1}: ${question}`);
+      parts.push(`R${index + 1}: ${answer}`);
+      if (index < pairs.length - 1) parts.push("");
+    });
+  }
+
+  parts.push(buildGeoSection(coords));
+  return parts.join("\n");
+}
+
+function extractAgentText(message) {
+  if (typeof message === "string") return message.trim();
+  if (!message || typeof message !== "object") return "";
+
+  const source = message.source ?? message.role ?? message.type;
+  if (source === "user" || source === "user_transcript") return "";
 
   return (
-    <Box sx={{ position: "fixed", bottom: 20, right: 20, zIndex: 1300, ...FONT }}>
-      {(isActive || isConnecting) && (
-        <Box
-          sx={{
-            ...FONT,
-            position: "absolute",
-            bottom: 74,
-            right: 0,
-            bgcolor: "#FCFCF5",
-            border: "1px solid #e9cffa",
-            borderRadius: 3,
-            px: 2,
-            py: 1,
-            boxShadow: 3,
-            whiteSpace: "nowrap",
-          }}
-        >
-          <Typography sx={{ ...FONT, fontSize: 13, fontWeight: 600, color: "#874cad" }}>
-            {isConnecting ? "Conectando…" : isSpeaking ? "Manolo está hablando…" : "Te escucho…"}
+    message.message ??
+    message.text ??
+    message.agent_response ??
+    message.agent_response_event?.agent_response ??
+    ""
+  ).trim();
+}
+
+function extractUserText(message) {
+  if (!message || typeof message !== "object") return "";
+
+  const source = message.source ?? message.role ?? message.type;
+  if (source !== "user" && source !== "user_transcript") return "";
+
+  return (message.message ?? message.text ?? message.user_transcript ?? "").trim();
+}
+
+function connectionStatusLabel(status, isConnecting) {
+  if (isConnecting) return "Conectando...";
+  if (status === "connected") return "Conectado";
+  if (status === "connecting") return "Conectando...";
+  if (status === "disconnected") return "Desconectado";
+  return status || "Desconocido";
+}
+
+function VoiceIntakeBody({
+  userId,
+  coords,
+  onClose,
+  finalSummary,
+  setFinalSummary,
+  descriptionBuilderRef,
+  elevenLabsUnavailable,
+  setElevenLabsUnavailable,
+  connectionError,
+  setConnectionError,
+}) {
+  const [messages, setMessages] = useState([]);
+  const [initialDescription, setInitialDescription] = useState("");
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [minFollowUp, setMinFollowUp] = useState(3);
+  const [micMuted, setMicMuted] = useState(true);
+  const [isPttActive, setIsPttActive] = useState(false);
+  const initialDescriptionRef = useRef("");
+  const lastAgentTextRef = useRef("");
+  const connectAttemptRef = useRef(0);
+  const summaryNudgeRef = useRef(false);
+  const autoFinalizeRef = useRef(false);
+  const contextSentRef = useRef(false);
+  const sendContextualUpdateRef = useRef(null);
+  const endRef = useRef(null);
+
+  const [fetchConversationConfig] = useLazyGetConversationConfigQuery();
+
+  const buildDescription = useCallback(
+    () => buildPublishDescription(messages, initialDescription, coords),
+    [messages, initialDescription, coords],
+  );
+
+  useEffect(() => {
+    if (descriptionBuilderRef) {
+      descriptionBuilderRef.current = buildDescription;
+    }
+  }, [buildDescription, descriptionBuilderRef]);
+
+  const maybeAutoFinalize = useCallback(
+    (agentText) => {
+      if (autoFinalizeRef.current || finalSummary) return;
+
+      const cleanText = agentText?.trim();
+      if (!cleanText || !containsPublishKeyword(cleanText)) return;
+
+      autoFinalizeRef.current = true;
+      setFinalSummary(buildDescription());
+    },
+    [buildDescription, finalSummary, setFinalSummary],
+  );
+
+  const appendUserText = useCallback((text) => {
+    const cleanText = text.trim();
+    if (!cleanText) return;
+
+    if (!initialDescriptionRef.current) {
+      initialDescriptionRef.current = cleanText;
+      setInitialDescription(cleanText);
+    }
+
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last?.role === "user" && last.text === cleanText) return prev;
+      return [...prev, { role: "user", text: cleanText, id: Date.now() }];
+    });
+  }, []);
+
+  const appendAgentText = useCallback(
+    (text) => {
+      const rawText = text.trim();
+      if (!rawText) return;
+
+      const displayText = stripPublishKeyword(rawText);
+      if (!displayText || displayText === lastAgentTextRef.current) {
+        maybeAutoFinalize(rawText);
+        return;
+      }
+
+      lastAgentTextRef.current = displayText;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "agent") {
+          return [...prev.slice(0, -1), { ...last, text: rawText }];
+        }
+        return [...prev, { role: "agent", text: rawText, id: Date.now() }];
+      });
+      maybeAutoFinalize(rawText);
+    },
+    [maybeAutoFinalize],
+  );
+
+  const conversation = useConversation({
+    micMuted,
+    onMessage: (message) => {
+      const userText = extractUserText(message);
+      if (userText) {
+        appendUserText(userText);
+        return;
+      }
+
+      const agentText = extractAgentText(message);
+      if (agentText) {
+        appendAgentText(agentText);
+      }
+    },
+    onConnect: () => {
+      setConnectionError(null);
+      setIsConnecting(false);
+      window.setTimeout(() => {
+        if (!contextSentRef.current) {
+          contextSentRef.current = true;
+          sendContextualUpdateRef.current?.(DITTOAPP_SESSION_CONTEXT);
+        }
+      }, 250);
+    },
+    onStatusChange: (newStatus) => {
+      if (newStatus === "connected") {
+        setIsConnecting(false);
+      }
+    },
+    onDisconnect: () => {
+      setIsPttActive(false);
+      setMicMuted(true);
+    },
+    onError: (error) => {
+      const message =
+        typeof error === "string"
+          ? error
+          : error instanceof Error
+            ? error.message
+            : "Error en la conversación con ElevenLabs.";
+
+      if (message.toLowerCase().includes("disconnected")) return;
+
+      setConnectionError(message);
+      setIsConnecting(false);
+    },
+  });
+
+  const { startSession, endSession, sendContextualUpdate, status, isSpeaking } = conversation;
+  const isConnected = status === "connected";
+  const canUsePtt = isConnected && !isSpeaking && !finalSummary;
+  const followUpCount = useMemo(
+    () => Math.max(0, messages.filter(({ role }) => role === "user").length - 1),
+    [messages],
+  );
+  const canRequestSummary = followUpCount >= minFollowUp && !finalSummary;
+
+  useEffect(() => {
+    sendContextualUpdateRef.current = sendContextualUpdate;
+  }, [sendContextualUpdate]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length, finalSummary, isSpeaking]);
+
+  useEffect(() => {
+    if (!isConnected || finalSummary || summaryNudgeRef.current) return;
+    if (followUpCount < minFollowUp) return;
+
+    summaryNudgeRef.current = true;
+    sendContextualUpdate(
+      `El cliente ya respondió las preguntas mínimas. Resume lo recopilado y termina tu mensaje con exactamente ${DITTO_PUBLISH_KEYWORD} para publicar en DittoApp.`,
+    );
+  }, [isConnected, finalSummary, followUpCount, minFollowUp, sendContextualUpdate]);
+
+  useEffect(() => {
+    const attemptId = connectAttemptRef.current + 1;
+    connectAttemptRef.current = attemptId;
+    let cancelled = false;
+
+    async function connect() {
+      try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const config = await fetchConversationConfig().unwrap();
+        if (cancelled || connectAttemptRef.current !== attemptId) return;
+
+        setMinFollowUp(config.min_follow_up_questions ?? 3);
+
+        const sessionOptions = {
+          userId: userId ? String(userId) : undefined,
+          connectionType: "webrtc",
+        };
+
+        if (config.use_prompt_override === true && config.prompt_override) {
+          sessionOptions.overrides = {
+            agent: {
+              prompt: { prompt: config.prompt_override },
+              firstMessage: config.first_message_override,
+              language: "es",
+            },
+          };
+        } else {
+          sessionOptions.overrides = {
+            agent: {
+              language: "es",
+            },
+          };
+        }
+
+        if (config.mode === "signed_url" && config.signed_url) {
+          sessionOptions.signedUrl = config.signed_url;
+        } else if (config.mode === "agent_id" && config.agent_id) {
+          sessionOptions.agentId = config.agent_id;
+        } else {
+          throw new Error("Configuración de ElevenLabs inválida.");
+        }
+
+        startSession(sessionOptions);
+      } catch (error) {
+        if (cancelled || connectAttemptRef.current !== attemptId) return;
+        if (error?.status === 503 || error?.status === 502) {
+          setElevenLabsUnavailable(true);
+        } else if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
+          setConnectionError("Necesito permiso de micrófono para la entrevista por voz.");
+        } else {
+          setConnectionError(
+            getApiErrorMessage(error, "No se pudo iniciar la entrevista por voz."),
+          );
+        }
+        setIsConnecting(false);
+      }
+    }
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      endConversationSession(endSession);
+    };
+  }, [
+    userId,
+    fetchConversationConfig,
+    startSession,
+    endSession,
+    setConnectionError,
+    setElevenLabsUnavailable,
+  ]);
+
+  const handleClose = () => {
+    endConversationSession(endSession);
+    onClose();
+  };
+
+  const handlePreparePublish = () => {
+    setFinalSummary(buildDescription());
+  };
+
+  const startPtt = (event) => {
+    event.preventDefault();
+    if (!canUsePtt) return;
+    setIsPttActive(true);
+    setMicMuted(false);
+  };
+
+  const stopPtt = () => {
+    if (!isPttActive) return;
+    setIsPttActive(false);
+    setMicMuted(true);
+  };
+
+  if (elevenLabsUnavailable) {
+    return (
+      <>
+        <DialogContent className="p-6">
+          <Alert severity="info">
+            La entrevista por voz no está disponible en este momento. Usa el formulario de texto
+            para publicar tu solicitud.
+          </Alert>
+        </DialogContent>
+        <DialogActions className="px-6 pb-5">
+          <Button onClick={handleClose} sx={{ ...FONT, textTransform: "none" }}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <DialogContent className="p-0 flex flex-col" sx={{ minHeight: 420 }}>
+        <Box className="px-5 py-4 border-b border-gray-200 bg-paper">
+          <Typography sx={FONT} className="text-sm font-bold text-gray-900">
+            Entrevista por voz
+          </Typography>
+          <Typography sx={FONT} className="text-xs text-gray-600 mt-1">
+            Mantén pulsado el micrófono para hablar. Haré preguntas breves para publicar tu
+            solicitud ({followUpCount}/{minFollowUp} mínimo).
+          </Typography>
+          <Typography
+            sx={FONT}
+            className={`text-[11px] mt-1 font-semibold ${
+              isConnected ? "text-emerald-700" : "text-amber-700"
+            }`}
+          >
+            {connectionStatusLabel(status, isConnecting)}
+            {isSpeaking ? " · El asistente está hablando" : ""}
+            {isPttActive ? " · Te escucho…" : ""}
           </Typography>
         </Box>
-      )}
 
-      {error && (
-        <Box
-          sx={{
-            ...FONT,
-            position: "absolute",
-            bottom: 74,
-            right: 0,
-            bgcolor: "#fff5f5",
-            border: "1px solid #fecaca",
-            borderRadius: 3,
-            px: 2,
-            py: 1,
-            boxShadow: 3,
-            maxWidth: 220,
-          }}
-        >
-          <Typography sx={{ ...FONT, fontSize: 12, color: "#b91c1c" }}>{error}</Typography>
+        {connectionError ? (
+          <Alert severity="error" className="mx-4 mt-4">
+            {connectionError}
+          </Alert>
+        ) : null}
+
+        {canRequestSummary ? (
+          <Box className="mx-4 mt-3">
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handlePreparePublish}
+              sx={{
+                ...FONT,
+                textTransform: "none",
+                borderRadius: 3,
+                bgcolor: "#874cad",
+                "&:hover": { bgcolor: "#7340a0" },
+              }}
+            >
+              Listo — preparar publicación
+            </Button>
+          </Box>
+        ) : null}
+
+        <Box className="flex-1 overflow-y-auto px-4 py-5 space-y-3 bg-gray-50 min-h-[220px] max-h-[40vh]">
+          {isConnecting && messages.length === 0 ? (
+            <Box className="h-full flex items-center justify-center gap-2">
+              <CircularProgress size={24} />
+              <Typography sx={FONT} className="text-sm text-gray-600">
+                Conectando con el asistente...
+              </Typography>
+            </Box>
+          ) : null}
+
+          {messages.map((item) => {
+            const isOwn = item.role === "user";
+            return (
+              <Box key={item.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                <Box
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                    isOwn
+                      ? "bg-primary-500 text-white rounded-br-sm"
+                      : "bg-paper text-black border border-gray-200 rounded-bl-sm"
+                  }`}
+                >
+                  <Typography
+                    sx={FONT}
+                    className={`text-sm break-words whitespace-pre-wrap ${
+                      isOwn ? "text-white" : "text-black"
+                    }`}
+                  >
+                    {stripPublishKeyword(item.text)}
+                  </Typography>
+                </Box>
+              </Box>
+            );
+          })}
+
+          {isSpeaking ? (
+            <Typography sx={FONT} className="text-xs text-gray-500 text-center">
+              El asistente está respondiendo…
+            </Typography>
+          ) : null}
+
+          <div ref={endRef} />
         </Box>
-      )}
 
-      <Tooltip title={isActive ? "Terminar conversación" : "Hablar con Manolo"}>
+        {finalSummary ? (
+          <Box className="mx-4 mb-3 p-4 rounded-xl border border-emerald-200 bg-emerald-50">
+            <Typography sx={FONT} className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+              Resumen listo para publicar
+            </Typography>
+            <Typography sx={FONT} className="text-sm text-gray-800 mt-2 whitespace-pre-wrap">
+              {finalSummary}
+            </Typography>
+          </Box>
+        ) : null}
+
+        <Box className="p-4 border-t border-gray-200 bg-paper flex flex-col items-center gap-2">
+          <Typography sx={FONT} className="text-xs text-gray-600 text-center">
+            {canUsePtt
+              ? "Mantén pulsado para hablar (suelta para enviar)"
+              : isSpeaking
+                ? "Espera a que termine de hablar…"
+                : "Conectando…"}
+          </Typography>
+          <Box
+            component="button"
+            type="button"
+            aria-label="Mantén pulsado para hablar"
+            disabled={!canUsePtt}
+            onPointerDown={startPtt}
+            onPointerUp={stopPtt}
+            onPointerLeave={stopPtt}
+            onPointerCancel={stopPtt}
+            className={isPttActive ? "va-ptt-active" : ""}
+            sx={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              border: "none",
+              cursor: canUsePtt ? "pointer" : "not-allowed",
+              bgcolor: isPttActive ? "#a855df" : "#BB6AF0",
+              opacity: canUsePtt ? 1 : 0.5,
+              boxShadow: isPttActive ? 6 : 3,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "transform 0.15s, box-shadow 0.15s",
+              transform: isPttActive ? "scale(1.08)" : "scale(1)",
+              touchAction: "none",
+              userSelect: "none",
+            }}
+          >
+            <i className="ti ti-microphone" style={{ fontSize: 30, color: "#fff" }} />
+          </Box>
+        </Box>
+      </DialogContent>
+
+      <style>{`
+        .va-ptt-active { animation: vaPttPulse 1s ease-in-out infinite; }
+        @keyframes vaPttPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(187,106,240,0.55); }
+          50%     { box-shadow: 0 0 0 14px rgba(187,106,240,0); }
+        }
+        @media (prefers-reduced-motion: reduce) { .va-ptt-active { animation: none; } }
+      `}</style>
+    </>
+  );
+}
+
+function VoiceBubble({ onOpen }) {
+  return (
+    <Box sx={{ position: "fixed", bottom: 20, right: 20, zIndex: 1300, ...FONT }}>
+      <Tooltip title="Entrevista por voz">
         <Box
           component="button"
-          onClick={toggle}
+          type="button"
+          onClick={onOpen}
           aria-label="Asistente de voz"
-          className={isActive ? "va-pulse" : ""}
           sx={{
             width: 60,
             height: 60,
@@ -107,35 +598,190 @@ function VoiceBubble() {
             "&:hover": { transform: "scale(1.06)", bgcolor: "#a55dd3" },
           }}
         >
-          {isActive ? (
-            <i className="ti ti-microphone" style={{ fontSize: 26, color: "#fff" }} />
-          ) : (
-            <Box
-              component="img"
-              src={logo}
-              alt="Ditto"
-              sx={{ width: 38, height: 38, objectFit: "contain" }}
-            />
-          )}
+          <Box
+            component="img"
+            src={logo}
+            alt="Ditto"
+            sx={{ width: 38, height: 38, objectFit: "contain" }}
+          />
         </Box>
       </Tooltip>
-
-      <style>{`
-        .va-pulse { animation: vaPulse 1.6s ease-in-out infinite; }
-        @keyframes vaPulse {
-          0%,100% { box-shadow: 0 0 0 0 rgba(187,106,240,0.5); }
-          50%     { box-shadow: 0 0 0 12px rgba(187,106,240,0); }
-        }
-        @media (prefers-reduced-motion: reduce) { .va-pulse { animation: none; } }
-      `}</style>
     </Box>
   );
 }
 
-export default function VoiceAssistant() {
+function VoiceAssistantDialog({
+  open,
+  onClose,
+  userId,
+  coords,
+  onConfirm,
+  isPublishing,
+}) {
+  const [finalSummary, setFinalSummary] = useState("");
+  const [connectionError, setConnectionError] = useState(null);
+  const [elevenLabsUnavailable, setElevenLabsUnavailable] = useState(false);
+  const descriptionBuilderRef = useRef(null);
+  const autoPublishRef = useRef(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const registerSummary = useCallback((resumen) => {
+    const built = descriptionBuilderRef.current?.();
+    if (built) {
+      setFinalSummary(built);
+      return "Resumen registrado. Publicando solicitud en DittoApp.";
+    }
+
+    const summary = typeof resumen === "string" ? resumen.trim() : "";
+    if (summary) setFinalSummary(summary);
+    return "Resumen registrado. Publicando solicitud en DittoApp.";
+  }, []);
+
+  const clientTools = useMemo(
+    () => ({
+      finalizar_solicitud: ({ resumen }) => registerSummary(resumen),
+      generar_resumen: ({ resumen }) => registerSummary(resumen),
+    }),
+    [registerSummary],
+  );
+
+  const handleClose = () => {
+    autoPublishRef.current = false;
+    setFinalSummary("");
+    setConnectionError(null);
+    setElevenLabsUnavailable(false);
+    onClose();
+  };
+
+  useEffect(() => {
+    if (!open) {
+      autoPublishRef.current = false;
+      return;
+    }
+    if (!finalSummary || isPublishing || autoPublishRef.current) return;
+
+    autoPublishRef.current = true;
+    void onConfirm(finalSummary);
+  }, [open, finalSummary, isPublishing, onConfirm]);
+
   return (
-    <ConversationProvider>
-      <VoiceBubble />
-    </ConversationProvider>
+    <Dialog
+      open={open}
+      fullScreen={isMobile}
+      onClose={(_, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        handleClose();
+      }}
+      fullWidth
+      maxWidth="md"
+      slotProps={{
+        paper: {
+          sx: {
+            ...FONT,
+            borderRadius: isMobile ? 0 : 4,
+          },
+        },
+      }}
+    >
+      <DialogTitle className="flex items-center justify-between pr-2">
+        <Typography sx={FONT} className="text-lg font-bold text-gray-900">
+          Publicar con voz
+        </Typography>
+        <IconButton onClick={handleClose} aria-label="Cerrar">
+          <i className="ti ti-x" aria-hidden="true" />
+        </IconButton>
+      </DialogTitle>
+
+      {open ? (
+        <ConversationProvider clientTools={clientTools}>
+          <VoiceIntakeBody
+            userId={userId}
+            coords={coords}
+            onClose={handleClose}
+            finalSummary={finalSummary}
+            setFinalSummary={setFinalSummary}
+            descriptionBuilderRef={descriptionBuilderRef}
+            elevenLabsUnavailable={elevenLabsUnavailable}
+            setElevenLabsUnavailable={setElevenLabsUnavailable}
+            connectionError={connectionError}
+            setConnectionError={setConnectionError}
+          />
+        </ConversationProvider>
+      ) : null}
+
+      <DialogActions className="px-6 pb-5">
+        <Button onClick={handleClose} sx={{ ...FONT, textTransform: "none" }}>
+          Cancelar
+        </Button>
+        {finalSummary ? (
+          <Button
+            variant="contained"
+            disabled={isPublishing}
+            onClick={() => onConfirm(finalSummary)}
+            sx={{ ...FONT, textTransform: "none", bgcolor: "#BB6AF0", "&:hover": { bgcolor: "#a855df" } }}
+          >
+            {isPublishing ? (
+              <>
+                <CircularProgress size={18} color="inherit" />
+                <Box component="span" sx={{ ml: 1 }}>
+                  Publicando solicitud...
+                </Box>
+              </>
+            ) : (
+              "Confirmar y publicar"
+            )}
+          </Button>
+        ) : null}
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export default function VoiceAssistant() {
+  const { isAuthenticated, user } = useCurrentUser();
+  const { coords } = useGeolocation();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [sessionKey, setSessionKey] = useState(0);
+  const [createRequest, { isLoading: isPublishing }] = useCreateServiceRequestMutation();
+
+  const isClient = isAuthenticated && user?.role !== "worker" && user?.role !== "support";
+
+  const handleOpen = () => {
+    setSessionKey((key) => key + 1);
+    setDialogOpen(true);
+  };
+
+  const handleConfirm = async (finalDescription) => {
+    if (!finalDescription.trim() || !user?.id) return;
+
+    try {
+      await createRequest({
+        userId: user.id,
+        description: finalDescription.trim(),
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      }).unwrap();
+      setDialogOpen(false);
+    } catch {
+      // El error se muestra en el dashboard si el usuario vuelve allí.
+    }
+  };
+
+  if (!isClient) return null;
+
+  return (
+    <>
+      <VoiceBubble onOpen={handleOpen} />
+      <VoiceAssistantDialog
+        key={sessionKey}
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        userId={user.id}
+        coords={coords}
+        onConfirm={handleConfirm}
+        isPublishing={isPublishing}
+      />
+    </>
   );
 }
