@@ -1,6 +1,8 @@
 import {
+  Alert,
   Box,
   Button,
+  CircularProgress,
   Container,
   Paper,
   Chip,
@@ -12,91 +14,12 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutlineOutlined";
 import { useState } from "react";
+import { Link as RouterLink, useParams } from "react-router-dom";
 
-const temas = [
-  {
-    id: 1,
-    titulo: "Introducción a React",
-    subtitulo: "Conceptos básicos",
-    descripcion:
-      "Conoce la estructura de una app en React, componentes y cómo organizar tu proyecto.",
-    videoUrl:
-      "https://www.youtube.com/watch?v=Y8WmIU7K_2k&pp=ygURZWwgZGlhIGRlbCBwYXlhc28%3D",
-    duracion: "18 min",
-  },
-  {
-    id: 2,
-    titulo: "Estado y props",
-    subtitulo: "Datos en componentes",
-    descripcion:
-      "Aprende a pasar información entre componentes y manejar estados de forma sencilla.",
-    videoUrl: "https://www.youtube.com/embed/Ke90Tje7VS0",
-    duracion: "24 min",
-  },
-  {
-    id: 3,
-    titulo: "Hooks y eventos",
-    subtitulo: "Interactividad",
-    descripcion:
-      "Explora hooks útiles como useState y useEffect para dar vida a tus interfaces.",
-    videoUrl: "https://www.youtube.com/embed/TNhaISOUy6Q",
-    duracion: "21 min",
-  },
-  {
-    id: 4,
-    titulo: "Hooks y eventos",
-    subtitulo: "Interactividad",
-    descripcion:
-      "Explora hooks útiles como useState y useEffect para dar vida a tus interfaces.",
-    videoUrl: "https://www.youtube.com/embed/TNhaISOUy6Q",
-    duracion: "21 min",
-  },
-  {
-    id: 5,
-    titulo: "Hooks y eventos",
-    subtitulo: "Interactividad",
-    descripcion:
-      "Explora hooks útiles como useState y useEffect para dar vida a tus interfaces.",
-    videoUrl: "https://www.youtube.com/embed/TNhaISOUy6Q",
-    duracion: "21 min",
-  },
-  {
-    id: 6,
-    titulo: "Hooks y eventos",
-    subtitulo: "Interactividad",
-    descripcion:
-      "Explora hooks útiles como useState y useEffect para dar vida a tus interfaces.",
-    videoUrl: "https://www.youtube.com/embed/TNhaISOUy6Q",
-    duracion: "21 min",
-  },
-  {
-    id: 7,
-    titulo: "Hooks y eventos",
-    subtitulo: "Tipos de Variables en un entorno real",
-    descripcion:
-      "Explora hooks útiles como useState y useEffect para dar vida a tus interfaces.",
-    videoUrl: "https://www.youtube.com/embed/TNhaISOUy6Q",
-    duracion: "21 min",
-  },
-  {
-    id: 8,
-    titulo: "Hooks y eventos",
-    subtitulo: "Interactividad",
-    descripcion:
-      "Explora hooks útiles como useState y useEffect para dar vida a tus interfaces.",
-    videoUrl: "https://www.youtube.com/embed/TNhaISOUy6Q",
-    duracion: "21 min",
-  },
-  {
-    id: 9,
-    titulo: "Hooks y eventos",
-    subtitulo: "Interactividad",
-    descripcion:
-      "Explora hooks útiles como useState y useEffect para dar vida a tus interfaces.",
-    videoUrl: "https://www.youtube.com/embed/TNhaISOUy6Q",
-    duracion: "21 min",
-  },
-];
+import {
+  useGetCourseLessonsQuery,
+  useGetCourseQuery,
+} from "../../store/api/coursesApi";
 
 const normalizeYouTubeUrl = (url) => {
   if (!url) return "";
@@ -122,7 +45,62 @@ const normalizeYouTubeUrl = (url) => {
 };
 
 export default function VisorDeCurso() {
-  const [temaPrincipal, setTemaPrincipal] = useState(temas[0]);
+  const { courseId } = useParams();
+  const parsedCourseId = Number(courseId);
+  const hasValidCourseId = Number.isInteger(parsedCourseId) && parsedCourseId > 0;
+  const [selectedLessonId, setSelectedLessonId] = useState(null);
+  const {
+    data: course,
+    isLoading: isLoadingCourse,
+    error: courseError,
+  } = useGetCourseQuery(parsedCourseId, { skip: !hasValidCourseId });
+  const {
+    data: lessons = [],
+    isLoading: isLoadingLessons,
+    error: lessonsError,
+  } = useGetCourseLessonsQuery(parsedCourseId, { skip: !hasValidCourseId });
+  const selectedLesson =
+    lessons.find(({ id }) => id === selectedLessonId) ?? lessons[0] ?? null;
+  const isLoading = isLoadingCourse || isLoadingLessons;
+  const error = courseError || lessonsError;
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: "calc(100svh - var(--ditto-navbar-height))",
+          display: "grid",
+          placeItems: "center",
+          bgcolor: "#f5f7fb",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!hasValidCourseId || error || !course) {
+    return (
+      <Box
+        sx={{
+          minHeight: "calc(100svh - var(--ditto-navbar-height))",
+          display: "grid",
+          placeItems: "center",
+          bgcolor: "#f5f7fb",
+          p: 3,
+        }}
+      >
+        <Stack spacing={2} sx={{ width: "100%", maxWidth: 560 }}>
+          <Alert severity="error">
+            {error?.data?.detail || "No se pudo cargar el curso solicitado."}
+          </Alert>
+          <Button component={RouterLink} to="/lista-curso" color="secondary">
+            Volver al catálogo
+          </Button>
+        </Stack>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -146,7 +124,7 @@ export default function VisorDeCurso() {
           component="h1"
           sx={{ m: 0, fontWeight: 700, color: "#fff", letterSpacing: 0 }}
         >
-          Bienvenido al Visor de Curso
+          {course.title}
         </Typography>
       </Box>
 
@@ -198,7 +176,7 @@ export default function VisorDeCurso() {
                   Temas del curso
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#6b7280" }}>
-                  {temas.length} lecciones disponibles
+                  {lessons.length} lecciones disponibles
                 </Typography>
               </Box>
             </Stack>
@@ -224,13 +202,13 @@ export default function VisorDeCurso() {
                 },
               }}
             >
-              {temas.map((tema, index) => {
-                const isActive = tema.id === temaPrincipal.id;
+              {lessons.map((lesson, index) => {
+                const isActive = lesson.id === selectedLesson?.id;
 
                 return (
                   <Button
-                    key={tema.id}
-                    onClick={() => setTemaPrincipal(tema)}
+                    key={lesson.id}
+                    onClick={() => setSelectedLessonId(lesson.id)}
                     variant="outlined"
                     sx={{
                       width: "100%",
@@ -290,7 +268,7 @@ export default function VisorDeCurso() {
                           overflowWrap: "anywhere",
                         }}
                       >
-                        {tema.titulo}
+                        {lesson.title}
                       </Typography>
                       <Typography
                         variant="caption"
@@ -304,7 +282,7 @@ export default function VisorDeCurso() {
                           overflowWrap: "anywhere",
                         }}
                       >
-                        {tema.subtitulo}
+                        {lesson.content_type === "video" ? "Video" : "Presentación"}
                       </Typography>
                     </Box>
                     <Box
@@ -343,7 +321,7 @@ export default function VisorDeCurso() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {tema.duracion}
+                      {lesson.content_type === "video" ? "Video" : "Material"}
                     </Box>
                   </Button>
                 );
@@ -388,13 +366,15 @@ export default function VisorDeCurso() {
                     letterSpacing: 0,
                   }}
                 >
-                  {temaPrincipal.titulo}
+                  {selectedLesson?.title || course.title}
                 </Typography>
               </Box>
 
               <Chip
                 icon={<PlayCircleOutlineIcon />}
-                label={temaPrincipal.duracion}
+                label={
+                  selectedLesson?.content_type === "video" ? "Video" : "Presentación"
+                }
                 sx={{
                   bgcolor: "rgba(167,43,193,0.1)",
                   color: "#8f22af",
@@ -413,7 +393,7 @@ export default function VisorDeCurso() {
                 lineHeight: 1.7,
               }}
             >
-              {temaPrincipal.descripcion}
+              {course.summary || course.description || "Contenido del curso."}
             </Typography>
 
             <Box
@@ -430,18 +410,37 @@ export default function VisorDeCurso() {
                 boxShadow: "0 18px 40px rgba(17,24,39,0.18)",
               }}
             >
-              <iframe
-                src={normalizeYouTubeUrl(temaPrincipal.videoUrl)}
-                title={temaPrincipal.titulo}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: 0,
-                  display: "block",
-                }}
-              />
+              {selectedLesson ? (
+                <iframe
+                  src={
+                    selectedLesson.content_type === "video"
+                      ? normalizeYouTubeUrl(selectedLesson.content_url)
+                      : selectedLesson.content_url
+                  }
+                  title={selectedLesson.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: 0,
+                    display: "block",
+                  }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    height: "100%",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "#fff",
+                    px: 3,
+                    textAlign: "center",
+                  }}
+                >
+                  Este curso todavía no tiene lecciones publicadas.
+                </Box>
+              )}
             </Box>
           </Box>
         </Box>

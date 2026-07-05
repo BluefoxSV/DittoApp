@@ -48,7 +48,7 @@ function AppRoutes() {
 
       {conSidebar ? (
         <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-          <SidebarNav role={role === 'worker' ? 'worker' : 'user'} />
+          <SidebarNav role={role === 'worker' || role === 'support' ? role : 'user'} />
           <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
             {contenido}
           </Box>

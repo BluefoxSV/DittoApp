@@ -8,6 +8,11 @@
  * IMPORTANTE: ajustar los `to` a las rutas reales del proyecto (revisar lazyMain).
  */
 export const SIDEBAR_ITEMS = {
+    support: [
+      { key: "dashboard", to: "/dashusu", icon: "ti-layout-dashboard", label: "Dashboard" },
+      { key: "courses", to: "/lista-curso", icon: "ti-school", label: "Administrar cursos" },
+      { key: "profile", to: "/profile", icon: "ti-user", label: "Perfil" },
+    ],
     worker: [
       { key: "dashboard", to: "/dashtrabaja", icon: "ti-layout-dashboard", label: "Dashboard" },
       { key: "courses", to: "/lista-curso", icon: "ti-school", label: "Cursos" },

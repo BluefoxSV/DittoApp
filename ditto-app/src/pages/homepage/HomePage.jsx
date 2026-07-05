@@ -18,7 +18,6 @@ import ArrowBackIosNewRounded from '@mui/icons-material/ArrowBackIosNewRounded';
 import ArrowForwardIosRounded from '@mui/icons-material/ArrowForwardIosRounded';
 import FiberManualRecordRounded from '@mui/icons-material/FiberManualRecordRounded';
 import { Link as RouterLink } from 'react-router-dom';
-import Navbar from '../../components/layout/navBar';
 
 
 const slides = [
@@ -210,7 +209,7 @@ export default function HomePage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mt: { xs: 2.5, md: 3.5 } }}>
               <Button
                 component={RouterLink}
-                to={activeSlide === 1 ? '/curso' : '#servicios'}
+                to={activeSlide === 1 ? '/lista-curso' : '#servicios'}
                 variant="contained"
                 size="large"
                 sx={{
@@ -453,7 +452,7 @@ export default function HomePage() {
                   </Typography>
                 </Box>
               </Stack>
-              <Button component={RouterLink} to="/curso" variant="contained" size="large" sx={{ mt: 4 }} color="secondary">
+              <Button component={RouterLink} to="/lista-curso" variant="contained" size="large" sx={{ mt: 4 }} color="secondary">
                 Ver todos los cursos
               </Button>
             </Grid>
@@ -521,7 +520,7 @@ export default function HomePage() {
                         <Typography variant="caption">▤ {course.lessons}</Typography>
                         <Typography variant="caption">◷ {course.duration}</Typography>
                       </Stack>
-                      <Button component={RouterLink} to="/curso" fullWidth variant="outlined" sx={{ mt: 2.5 }} color="secondary">
+                      <Button component={RouterLink} to="/lista-curso" fullWidth variant="outlined" sx={{ mt: 2.5 }} color="secondary">
                         Ver curso
                       </Button>
                     </CardContent>
