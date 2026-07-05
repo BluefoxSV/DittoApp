@@ -12,8 +12,9 @@ export const chatApi = apiSlice.injectEndpoints({
       ],
     }),
     getRequestConversation: builder.query({
-      query: (requestId) => `/chat/service-requests/${requestId}/messages`,
-      providesTags: (_result, _error, requestId) => [
+      query: ({ requestId }) => `/chat/service-requests/${requestId}/messages`,
+      transformResponse: (response) => (Array.isArray(response) ? response : []),
+      providesTags: (_result, _error, { requestId }) => [
         { type: "Chat", id: `request-${requestId}` },
       ],
     }),
