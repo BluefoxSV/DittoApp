@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AppBar, Box, CircularProgress } from '@mui/material';
+import { useSelector } from 'react-redux';
 import lazyMain from './lazyMain';
 
 import GuardedRoute from './components/auth/GuardedRoute';
@@ -22,6 +23,7 @@ function LoadingFallback() {
 
 function AppRoutes() {
   const { pathname } = useLocation();
+  const role = useSelector((state) => state.auth.user?.role);
   const conSidebar = !RUTAS_SIN_SIDEBAR.includes(pathname);
 
   const contenido = (
@@ -46,7 +48,7 @@ function AppRoutes() {
 
       {conSidebar ? (
         <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-          <SidebarNav role="user" />
+          <SidebarNav role={role === 'worker' ? 'worker' : 'user'} />
           <Box component="main" sx={{ flex: 1, minWidth: 0 }}>
             {contenido}
           </Box>
