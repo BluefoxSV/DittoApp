@@ -146,7 +146,7 @@ export default function Footer() {
                     color: "#fff",
                   }}
                 >
-                  BlueFox SV.
+                  Ditto App
                 </Typography>
               </Box>
 
@@ -237,7 +237,7 @@ export default function Footer() {
               fontWeight: 700,
             }}
           >
-            BlueFox SV.
+            Ditto App
           </Link>
         </Typography>
       </Box>
