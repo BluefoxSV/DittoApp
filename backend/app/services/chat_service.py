@@ -103,7 +103,7 @@ async def send_request_message(request_id: int, sender_id: int, content: str) ->
     return await ChatMessage.create(
         sender=sender,
         receiver=receiver,
-        service_request_id=request.id,
+        service_request=request,
         content=content,
     )
 
