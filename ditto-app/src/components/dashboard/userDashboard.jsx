@@ -26,6 +26,7 @@ import {
 } from "./serviceRequestUi";
 
 const FONT = { fontFamily: "'Quicksand', system-ui, sans-serif" };
+const LOCATION_PRECISION = 4;
 const avatarSx = {
   bgcolor: "#BB6AF0",
   color: "#fff",
@@ -67,12 +68,23 @@ export default function UserDashboard() {
     useGeolocation();
   const [updateUserLocation] = useUpdateUserLocationMutation();
 
+  const locationKey = coords
+    ? `${coords.latitude.toFixed(LOCATION_PRECISION)},${coords.longitude.toFixed(
+        LOCATION_PRECISION,
+      )}`
+    : "";
+  const stableCoords = useMemo(() => {
+    if (!locationKey) return null;
+    const [latitude, longitude] = locationKey.split(",").map(Number);
+    return { latitude, longitude };
+  }, [locationKey]);
+
   const workerQueryArgs = useMemo(
     () =>
-      coords
-        ? { lat: coords.latitude, lng: coords.longitude, radiusKm: 100 }
+      stableCoords
+        ? { lat: stableCoords.latitude, lng: stableCoords.longitude, radiusKm: 100 }
         : {},
-    [coords],
+    [stableCoords],
   );
 
   const {
@@ -92,13 +104,13 @@ export default function UserDashboard() {
     useCreateServiceRequestMutation();
 
   useEffect(() => {
-    if (!userId || !coords) return;
+    if (!userId || !stableCoords) return;
     updateUserLocation({
       userId,
-      latitude: coords.latitude,
-      longitude: coords.longitude,
+      latitude: stableCoords.latitude,
+      longitude: stableCoords.longitude,
     });
-  }, [userId, coords, updateUserLocation]);
+  }, [userId, stableCoords, updateUserLocation]);
 
   const workersById = useMemo(
     () => new Map(workers.map((worker) => [worker.id, worker])),
@@ -232,7 +244,7 @@ export default function UserDashboard() {
         </Alert>
       ) : null}
       <Box className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {isLoadingWorkers ? (
+        {isLoadingWorkers && suggestions.length === 0 ? (
           <Box className="col-span-full py-8 flex justify-center">
             <CircularProgress size={28} />
           </Box>
