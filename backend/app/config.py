@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     n8n_webhook_url: str | None = None
     elevenlabs_api_key: str | None = None
     elevenlabs_agent_id: str | None = None
+    elevenlabs_use_signed_url: bool = False
 
 
 settings = Settings()
