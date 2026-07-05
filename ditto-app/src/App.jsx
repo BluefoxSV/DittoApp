@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppBar, Box, CircularProgress } from '@mui/material';
 import { useSelector } from 'react-redux';
 import lazyMain from './lazyMain';
@@ -36,6 +36,7 @@ function AppRoutes() {
             element={<GuardedRoute path={route.path} element={route.element} />}
           />
         ))}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
