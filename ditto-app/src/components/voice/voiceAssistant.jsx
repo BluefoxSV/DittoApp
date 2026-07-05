@@ -162,7 +162,7 @@ function buildVoiceSessionOptions(config, userId) {
     overrides: {
       conversation: { textOnly: false },
       agent: {
-        language: "es",
+        language: "en",
       },
     },
   };
