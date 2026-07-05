@@ -5,12 +5,17 @@ from app.config import settings
 from app.database import TORTOISE_ORM
 from app.routes import api_router
 
-app = FastAPI(title=settings.app_name, debug=settings.debug)
+app = FastAPI(
+    title=settings.app_name,
+    debug=settings.debug,
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+)
 
 app.include_router(api_router)
 
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
 
