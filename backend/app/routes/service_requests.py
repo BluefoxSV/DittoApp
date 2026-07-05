@@ -55,14 +55,7 @@ async def list_feed_requests(
     if current_user.role not in {UserRole.WORKER, UserRole.SUPPORT}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
     if lat is None or lng is None:
-        requests = await ServiceRequest.filter(
-            status=ServiceRequestStatus.PENDING,
-            worker_id__isnull=True,
-        )
-        return [
-            ServiceRequestWithDistance.model_validate(request)
-            for request in sorted(requests, key=lambda item: -item.created_at.timestamp())
-        ]
+        return await service_request_service.list_open_requests()
     return await service_request_service.list_nearby_open_requests(lat, lng, radius_km=radius_km)
 
 
